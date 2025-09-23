@@ -1,0 +1,23 @@
+python/.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Xcode / Swift
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.playground
+build/
+*.dSYM
+
+# SwiftPM
+.swiftpm/
+.build/
+
+# Logs
+*.log
+EOF
