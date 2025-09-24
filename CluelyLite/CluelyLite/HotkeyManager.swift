@@ -6,13 +6,13 @@ final class HotkeyManager {
     private var eventHandler: EventHandlerRef?
 
     func registerToggleAskHotkey() {
-        var hotKeyID = EventHotKeyID(signature: OSType(UInt32(truncatingIfNeeded: 0x434C4C59)), id: 1) // 'CLLY'
-        let keyCode: UInt32 = UInt32(kVK_Return) // Return key
+        let hotKeyID = EventHotKeyID(signature: OSType(UInt32(truncatingIfNeeded: 0x434C4C59)), id: 1) // 'CLLY'
+        let keyCode: UInt32 = UInt32(kVK_ANSI_Backslash)
         let modifiers: UInt32 = UInt32(cmdKey)    // ⌘
 
-        let registerStatus = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
-        guard registerStatus == noErr else {
-            NSLog("Failed to register Command+Return hotkey (status %d)", registerStatus)
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        guard status == noErr else {
+            NSLog("Failed to register Command+\\ hotkey (status %d)", status)
             return
         }
 
@@ -28,7 +28,7 @@ final class HotkeyManager {
 
         guard handlerStatus == noErr else {
             NSLog("Failed to install hotkey handler (status %d)", handlerStatus)
-            if let hotKeyRef = hotKeyRef {
+            if let hotKeyRef {
                 UnregisterEventHotKey(hotKeyRef)
                 self.hotKeyRef = nil
             }
@@ -37,13 +37,7 @@ final class HotkeyManager {
     }
 
     deinit {
-        if let hotKeyRef = hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
-        if let handler = eventHandler { RemoveEventHandler(handler) }
+        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
+        if let eventHandler { RemoveEventHandler(eventHandler) }
     }
 }
-//
-//  HotkeyManager.swift
-//  CluelyLite
-//
-//  Created by Vikranth Reddimasu on 9/23/25.
-//

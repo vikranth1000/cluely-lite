@@ -15,7 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var hotkeyManager: HotkeyManager!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Menu bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Cluely-Lite")
@@ -23,30 +22,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
 
-        // Overlay window
         overlayController = OverlayWindowController.shared
-        overlayController.collapseOverlay(animated: false)
 
-        // Global hotkey ⌘↩ to focus Ask
         hotkeyManager = HotkeyManager()
         hotkeyManager.registerToggleAskHotkey()
 
-        // Reveal overlay when the mouse touches the top edge
         EdgePeeker.shared.start { [weak self] in
             guard let self = self else { return }
-            if self.overlayController.isInteractive == false {
-                self.overlayController.expandOverlay(requestingFocus: false)
+            if self.overlayController.isHiddenFromUser == false && self.overlayController.isInteractive == false {
+                self.overlayController.expandOverlay(requestingFocus: false, animated: true)
             }
         }
 
-        // When hotkey fires, bring up Ask
         NotificationCenter.default.addObserver(forName: .toggleAskBar, object: nil, queue: .main) { [weak self] _ in
-            self?.overlayController.expandOverlay(requestingFocus: true)
+            self?.overlayController.toggleVisibility()
         }
     }
 
     @objc func toggleOverlay() {
-        overlayController.toggleInteractiveMode()
+        overlayController.toggleVisibility()
     }
 }
 

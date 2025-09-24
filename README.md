@@ -1,218 +1,118 @@
-# Cluely-Lite 🤖
+# Cluely-Lite
 
-A **local, privacy-focused AI desktop assistant** for macOS that can see and interact with your screen using accessibility APIs and local AI models.
+Cluely-Lite is a macOS desktop companion that keeps all cognitive work on your machine. The SwiftUI front end captures context through accessibility APIs, while a local Python agent plans actions with a small language model served by Ollama. The result is a privacy-preserving automation layer that can read what is on screen, reason about your request, and act through native macOS primitives.
 
-![Cluely-Lite Demo](https://img.shields.io/badge/macOS-14.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.0-orange) ![Python](https://img.shields.io/badge/Python-3.8+-green) ![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-brightgreen)
+## Key Capabilities
 
-## ✨ Features
+- Local-only language planning (no network calls beyond your Ollama daemon)
+- Accessibility snapshotting with confirmation gates for destructive intents
+- Minimal pill-shaped heads-up display that expands for requests and collapses to stay out of the way
+- Floating transcript window that shows full model responses, detachable from the main HUD
+- Hotkey control (Command + \) for instant hide/show and hover activation at the top edge of the screen
 
-- **🎯 On-demand activation** - No continuous monitoring, only works when you invoke it
-- **🔒 100% Local** - All AI processing happens on your machine using Ollama
-- **👁️ Screen awareness** - Uses macOS Accessibility APIs to understand your screen
-- **⚡ Quick access** - Press `⌘+Return` or hover at top edge to activate
-- **🛡️ Safety first** - Confirmation required for destructive actions
-- **🎨 Beautiful UI** - Native macOS design with translucent overlay
-- **🔧 Highly configurable** - Customizable models, hotkeys, and behavior
+## Requirements
 
-## 🚀 Quick Start
+- macOS 14.0 or newer with accessibility permissions granted to Cluely-Lite
+- Xcode command line tools (or full Xcode) to build the Swift target
+- Python 3.9+ with standard library only (no additional dependencies required)
+- Ollama with at least one compact model pulled locally (the defaults assume `phi4:mini`)
 
-### 1. Install Ollama
+## Installation Checklist
+
+1. **Install Ollama**
+   ```bash
+   curl -fsSL https://ollama.ai/install.sh | sh
+   ollama serve
+   ollama pull phi4:mini
+   ```
+
+2. **Clone and prepare**
+   ```bash
+   git clone <repo-url>
+   cd cluely-lite
+   ```
+
+3. **Build the macOS app**
+   ```bash
+   xcodebuild -project CluelyLite/CluelyLite.xcodeproj \
+              -scheme CluelyLite \
+              -configuration Release \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+   ```
+   Copy `CluelyLite.app` from `Build/Products/Release` into `/Applications` (or another writable location) so macOS will allow you to grant permissions.
+
+4. **Grant permissions**
+   - System Settings → Privacy & Security → Accessibility → add the copied `CluelyLite.app`
+   - Optional: System Settings → Privacy & Security → Screen Recording for richer snapshots
+
+5. **Start the automation agent**
+   ```bash
+   cd python/src
+   python server.py
+   ```
+
+6. **Launch the macOS client**
+   Start `/Applications/CluelyLite.app`. The pill will appear at the top of your primary display once it has accessibility access.
+
+## Operating the Assistant
+
+- **Toggle visibility**: Command + \ hides or shows the HUD. When hidden, the response transcript is also dismissed.
+- **Expand to interact**: Hover at the top edge or press Command + \ while visible to expand the pill and focus the text field automatically.
+- **Submit commands**: Type a natural-language instruction and press Return. The response float appears beneath the pill and can be closed with Escape or the close button.
+- **Confirm risky actions**: When the planner proposes something that might be destructive, Cluely-Lite requires you to type `confirm` or `cancel` before executing.
+- **Resize or reposition**: Drag the left grip to move the HUD. Use the vertical handle on the right to widen or narrow it. Positions persist until you move or resize again.
+
+## Anatomy of the System
+
+```
+┌──────────────┐     ┌────────────────────────────────────┐     ┌──────────────┐
+│ Swift Client │◄───►│ Python Action Planner (http://127) │◄───►│ Ollama Model │
+│              │     │ • instruction + snapshot ingestion │     │              │
+│ • HUD + UX   │     │ • structured JSON tool planning    │     │ • local LLM  │
+│ • AX bridge  │     │ • fallback echo when LLM offline   │     │              │
+└──────────────┘     └────────────────────────────────────┘     └──────────────┘
+```
+
+The Swift target is responsible for capturing the accessibility tree, presenting UI, and invoking macOS actions. The Python service translates natural language requests into structured “tools” that the macOS layer can execute. Both components communicate via a local HTTP API on port 8765.
+
+## Configuration Surface
+
+Environment variables influence the Python agent:
+
 ```bash
-curl -fsSL https://ollama.ai/install.sh | sh
-ollama serve
-ollama pull phi4:mini
+export CLUELY_OLLAMA_MODEL="llama3.2:3b"      # pick a different local model
+export CLUELY_OLLAMA_URL="http://127.0.0.1:11434/api/generate"  # custom Ollama endpoint
+export CLUELY_DEBUG=1                          # verbose logging for the server
 ```
 
-### 2. Run Setup Script
-```bash
-git clone <your-repo-url>
-cd cluely-lite
-chmod +x setup.sh
-./setup.sh
-```
+The Swift code exposes adjustments in `OverlayWindow.swift` and `OverlayView.swift` for UI timings, sizing, and confirmation thresholds. Hotkey definitions live in `HotkeyManager.swift`.
 
-### 3. Grant Permissions
-- **System Preferences** → **Security & Privacy** → **Privacy** → **Accessibility**
-- Add Cluely-Lite and check the box
+## Troubleshooting
 
-### 4. Launch
-```bash
-./launch_cluely.sh
-```
+| Symptom | Checklist |
+| --- | --- |
+| Assistant answers “snapshot unavailable” | Ensure Cluely-Lite is checked under Privacy & Security → Accessibility. If the target app is on another Space or display, bring it forward before asking. |
+| `python server.py` prints connection errors | Verify `ollama serve` is running and that the model listed in `CLUELY_OLLAMA_MODEL` is pulled locally. |
+| Command + \ does nothing | Another app may already use the shortcut. Update `HotkeyManager.swift` to a different key combination and rebuild. |
+| Floating transcript lingers after closing the HUD | Press Command + \ once to hide both the pill and transcript; press again to bring them back. |
+| Model output is unhelpful | Try a richer Ollama model (`llama3.2:3b` or `qwen2.5:3b`) and restart the Python server so it picks up the new environment variable. |
 
-## 📖 Usage
+Logs:
+- Swift output: Console.app filtered by “CluelyLite”
+- Python server: stdout from `python server.py`
 
-### Basic Commands
-- **Press `⌘+Return`** or **hover at top edge** to activate
-- Type natural language commands:
-  - "Click the Save button"
-  - "Type 'Hello World' in the search box"
-  - "Focus on the username field"
-  - "What's on my screen right now?"
-- When a potentially destructive action is detected you'll see a prompt—type `confirm` to proceed or `cancel` to abort.
-- The overlay stays as a tiny pill at the top; hover your cursor to expand it or press the hotkey to interact.
+## Development Workflow
 
-### Available Actions
-- **`answer`** - Provide text responses
-- **`click`** - Click UI elements
-- **`type`** - Type text into input fields
-- **`focus`** - Focus on specific elements
+1. Keep `python/src/server.py` running for live testing.
+2. In another terminal, use `xcodebuild` (or Xcode GUI) to build the Swift target. During iteration, pass `-configuration Debug` for faster builds.
+3. `OverlayView.swift` contains the SwiftUI UI. `OverlayWindow.swift` wraps NSPanel behavior. Accessibility capture and execution live in `AccessibilitySnapshotter.swift` and `AccessibilityActionPerformer.swift` respectively.
+4. The mini HUD responds to SwiftUI state, making it easy to experiment with layout and interactions. `OverlayController` is the mediator between UI events and backend calls.
+5. For automated verification of the Python API, run `python test_server.py`. It exercises the health endpoint and sample commands.
 
-## 🏗️ Architecture
+## License
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   macOS App     │    │  Python Server   │    │   Ollama AI     │
-│                 │    │                  │    │                 │
-│ • SwiftUI UI    │◄──►│ • HTTP Server    │◄──►│ • Local LLM     │
-│ • Accessibility │    │ • Action Planner │    │ • Tool Planning │
-│ • Hotkey Mgmt   │    │ • JSON Parser    │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
+Cluely-Lite is available under the MIT License. See `LICENSE` for the full text.
 
-## 🔧 Configuration
+## Support
 
-### Environment Variables
-```bash
-# Use different AI model
-export CLUELY_OLLAMA_MODEL="llama3.2:3b"
-
-# Use different Ollama server
-export CLUELY_OLLAMA_URL="http://localhost:11434/api/generate"
-
-# Enable debug mode
-export CLUELY_DEBUG=1
-```
-
-### Recommended Models
-- **`phi4:mini`** - Fastest, ~2GB RAM, good for basic tasks
-- **`llama3.2:3b`** - Balanced performance, ~3GB RAM
-- **`qwen2.5:3b`** - Excellent for complex tasks, ~3GB RAM
-
-## 🛠️ Development
-
-### Project Structure
-```
-cluely-lite/
-├── CluelyLite/              # macOS Swift app
-│   ├── CluelyLiteApp.swift  # Main app entry point
-│   ├── OverlayView.swift    # UI overlay
-│   ├── AgentClient.swift    # HTTP client
-│   └── Accessibility*.swift # Screen interaction
-├── python/src/              # Python AI server
-│   └── server.py           # HTTP server & AI logic
-├── setup.sh                # Automated setup
-├── test_server.py          # Server testing
-└── SETUP.md               # Detailed setup guide
-```
-
-### Building from Source
-```bash
-# Build macOS app
-cd CluelyLite
-xcodebuild -project CluelyLite.xcodeproj -scheme CluelyLite -configuration Release build
-
-# Start Python server
-cd python/src
-python server.py
-```
-
-### Testing
-```bash
-# Test the server
-python test_server.py
-
-# Test with curl
-curl -X POST http://127.0.0.1:8765/command \
-  -H "Content-Type: application/json" \
-  -d '{"instruction":"Click Save button"}'
-```
-
-## 🔒 Privacy & Security
-
-- **✅ 100% Local Processing** - No data leaves your machine
-- **✅ No Telemetry** - No usage tracking or analytics
-- **✅ Open Source** - Full source code available for review
-- **✅ Minimal Permissions** - Only requests necessary accessibility access
-- **✅ No Cloud Dependencies** - Works completely offline
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Accessibility permissions required"**
-- Grant permissions in System Preferences → Security & Privacy → Privacy → Accessibility
-
-**"Ollama not detected"**
-- Start Ollama: `ollama serve`
-- Check model: `ollama list`
-- Verify URL in server logs
-
-**"Agent HTTP error"**
-- Ensure Python server is running on port 8765
-- Check firewall settings
-- Review server logs
-
-**App doesn't respond to hotkeys**
-- Grant accessibility permissions
-- Restart the app
-- Check for conflicting hotkeys
-
-### Debug Mode
-```bash
-# Enable debug logging
-export CLUELY_DEBUG=1
-python python/src/server.py
-```
-
-### Performance Tips
-1. Use smaller models for faster responses
-2. Close unnecessary applications
-3. Use specific, clear instructions
-4. Ensure adequate RAM (4GB+ recommended)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-### Development Setup
-```bash
-# Clone and setup
-git clone <your-fork>
-cd cluely-lite
-./setup.sh
-
-# Run in development mode
-cd python/src
-python server.py &
-cd ../../CluelyLite
-xcodebuild -project CluelyLite.xcodeproj -scheme CluelyLite -configuration Debug build
-```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Ollama** - For providing excellent local LLM infrastructure
-- **macOS Accessibility APIs** - For enabling screen interaction
-- **SwiftUI** - For the beautiful native UI
-- **Python** - For the robust server implementation
-
-## 📞 Support
-
-- 📖 **Documentation**: See [SETUP.md](SETUP.md) for detailed setup
-- 🐛 **Issues**: Report bugs on GitHub Issues
-- 💬 **Discussions**: Join GitHub Discussions for questions
-- 📧 **Contact**: [Your contact information]
-
----
-
-**Made with ❤️ for privacy-conscious macOS users**
-
-*Cluely-Lite: Your local AI assistant that respects your privacy.*
+Issues and feature requests are welcome via GitHub Issues. For local debugging questions, open a discussion or contact the maintainers through the project’s preferred communication channel.

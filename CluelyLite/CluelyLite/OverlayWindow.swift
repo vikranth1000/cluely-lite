@@ -22,78 +22,41 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
 
     private var manualOrigin: CGPoint?
     private var manualWidth: CGFloat?
-    private var isExpanded = false
+    private var dragBaseOrigin: CGPoint?
     private var resizeBaseWidth: CGFloat?
+    private var isExpanded = false
+    private var isHidden = false
+    private var keyMonitor: Any?
 
     private override init() {
         super.init()
         configureWindow()
-        collapseOverlay(animated: false)
-        window.orderFrontRegardless()
+        showCollapsed(requestingFocus: false, animated: false)
     }
 
-    private func configureWindow() {
-        let initialFrame = NSRect(x: 0, y: 0, width: 320, height: collapsedHeight)
-        window = OverlayPanel(
-            contentRect: initialFrame,
-            styleMask: [.nonactivatingPanel, .hudWindow],
-            backing: .buffered,
-            defer: false
-        )
-
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        window.isOpaque = false
-        window.hasShadow = false
-        window.backgroundColor = .clear
-        window.ignoresMouseEvents = false
-        window.isMovable = true
-        window.isMovableByWindowBackground = true
-        window.hidesOnDeactivate = false
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.standardWindowButton(.closeButton)?.isHidden = true
-        window.isFloatingPanel = true
-        window.level = .statusBar
-        window.delegate = self
-
-        hosting = NSHostingView(rootView: OverlayView(controller: overlayController))
-        hosting.translatesAutoresizingMaskIntoConstraints = true
-        hosting.autoresizingMask = [.width, .height]
-        window.contentView = hosting
-
-        overlayController.requestCollapse = { [weak self] in
-            self?.collapseOverlay(animated: true)
-        }
-
-        overlayController.requestExpand = { [weak self] focus in
-            self?.expandOverlay(requestingFocus: focus, animated: true)
-        }
-
-        overlayController.adjustWidth = { [weak self] delta, finished in
-            self?.adjustWidth(delta: delta, finished: finished)
-        }
-
-        overlayController.presentResponsePanel = { [weak self] text in
-            self?.showResponsePanel(with: text)
-        }
-
-        overlayController.hideResponsePanel = { [weak self] in
-            self?.hideResponsePanel()
-        }
-
-        responseController.onDismiss = { [weak self] in
-            guard let self else { return }
-            overlayController.responsePanelVisible = false
-            if isExpanded {
-                focusOverlay()
-            }
+    deinit {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
         }
     }
 
-    // MARK: - Expansion / Collapse
+    var isHiddenFromUser: Bool { isHidden }
+
+    // MARK: - Public controls
+
+    func toggleVisibility() {
+        if isHidden {
+            showCollapsed(requestingFocus: false, animated: true)
+        } else {
+            hideOverlay()
+        }
+    }
 
     func expandOverlay(requestingFocus: Bool, animated: Bool = true) {
         guard let screen = NSScreen.main else { return }
+        if isHidden {
+            showCollapsed(requestingFocus: false, animated: false)
+        }
 
         let targetFrame = frame(for: expandedHeight, screen: screen)
         isExpanded = true
@@ -121,11 +84,7 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
     }
 
     func toggleInteractiveMode() {
-        if isExpanded {
-            collapseOverlay(animated: true)
-        } else {
-            expandOverlay(requestingFocus: true, animated: true)
-        }
+        toggleVisibility()
     }
 
     var isInteractive: Bool { isExpanded }
@@ -138,7 +97,110 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
         responseController.updateAnchor(relativeTo: window.frame)
     }
 
-    // MARK: - Helpers
+    // MARK: - Private helpers
+
+    private func configureWindow() {
+        let initialFrame = NSRect(x: 0, y: 0, width: 320, height: collapsedHeight)
+        window = OverlayPanel(
+            contentRect: initialFrame,
+            styleMask: [.nonactivatingPanel, .hudWindow],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.isOpaque = false
+        window.hasShadow = false
+        window.backgroundColor = .clear
+        window.ignoresMouseEvents = false
+        window.isMovable = false
+        window.isMovableByWindowBackground = false
+        window.hidesOnDeactivate = false
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.isFloatingPanel = true
+        window.level = .statusBar
+        window.delegate = self
+
+        hosting = NSHostingView(rootView: OverlayView(controller: overlayController))
+        hosting.translatesAutoresizingMaskIntoConstraints = true
+        hosting.autoresizingMask = [.width, .height]
+        window.contentView = hosting
+
+        overlayController.requestCollapse = { [weak self] in
+            self?.collapseOverlay(animated: true)
+        }
+
+        overlayController.requestExpand = { [weak self] focus in
+            self?.expandOverlay(requestingFocus: focus, animated: true)
+        }
+
+        overlayController.beginDrag = { [weak self] in
+            self?.beginDrag()
+        }
+
+        overlayController.updateDrag = { [weak self] translation, finished in
+            self?.performDrag(with: translation, finished: finished)
+        }
+
+        overlayController.adjustWidth = { [weak self] delta, finished in
+            self?.adjustWidth(delta: delta, finished: finished)
+        }
+
+        overlayController.presentResponsePanel = { [weak self] text in
+            self?.showResponsePanel(with: text)
+        }
+
+        overlayController.hideResponsePanel = { [weak self] in
+            self?.hideResponsePanel()
+        }
+
+        responseController.onDismiss = { [weak self] in
+            guard let self else { return }
+            overlayController.responsePanelVisible = false
+            if isExpanded {
+                focusOverlay()
+            }
+        }
+
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            if event.keyCode == 53 { // Escape
+                if overlayController.responsePanelVisible {
+                    hideResponsePanel()
+                    return nil
+                }
+            }
+            return event
+        }
+    }
+
+    private func showCollapsed(requestingFocus: Bool, animated: Bool) {
+        guard let screen = NSScreen.main else { return }
+        isHidden = false
+        isExpanded = false
+        overlayController.isExpanded = false
+
+        let targetFrame = frame(for: collapsedHeight, screen: screen)
+        window.setFrame(targetFrame, display: true)
+        window.alphaValue = 0.9
+        window.orderFrontRegardless()
+        manualOrigin = targetFrame.origin
+        manualWidth = targetFrame.width
+
+        if requestingFocus {
+            expandOverlay(requestingFocus: true, animated: animated)
+        }
+    }
+
+    private func hideOverlay() {
+        isHidden = true
+        manualOrigin = window.frame.origin
+        manualWidth = window.frame.width
+        hideResponsePanel()
+        window.orderOut(nil)
+    }
 
     private func focusOverlay() {
         NSApp.activate(ignoringOtherApps: true)
@@ -160,9 +222,9 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
             window.setFrame(frame, display: true)
             window.alphaValue = alpha
         }
-        manualOrigin = window.frame.origin
-        manualWidth = window.frame.width
-        responseController.updateAnchor(relativeTo: window.frame)
+        manualOrigin = frame.origin
+        manualWidth = frame.width
+        responseController.updateAnchor(relativeTo: frame)
     }
 
     private func frame(for height: CGFloat, screen: NSScreen) -> NSRect {
@@ -188,13 +250,37 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
 
     private func clampedWidth(for visible: NSRect) -> CGFloat {
         let maxWidth = visible.width - maxWidthPadding
-        let desired = manualWidth ?? window?.frame.width ?? 320
+        let desired = manualWidth ?? window.frame.width
         return min(max(desired, minWidth), maxWidth)
+    }
+
+    private func beginDrag() {
+        dragBaseOrigin = window.frame.origin
+    }
+
+    private func performDrag(with translation: CGSize, finished: Bool) {
+        guard let base = dragBaseOrigin, let screen = window.screen ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        let margin: CGFloat = 12
+
+        var newOrigin = CGPoint(x: base.x + translation.width, y: base.y + translation.height)
+        newOrigin.x = min(max(newOrigin.x, visible.minX + margin), visible.maxX - window.frame.width - margin)
+        newOrigin.y = min(max(newOrigin.y, visible.minY + margin), visible.maxY - window.frame.height - margin)
+
+        window.setFrameOrigin(newOrigin)
+        manualOrigin = newOrigin
+        responseController.updateAnchor(relativeTo: window.frame)
+
+        if finished {
+            dragBaseOrigin = nil
+        }
     }
 
     private func adjustWidth(delta: CGFloat, finished: Bool) {
         guard let screen = window.screen ?? NSScreen.main else { return }
-        if resizeBaseWidth == nil { resizeBaseWidth = window.frame.width }
+        if resizeBaseWidth == nil {
+            resizeBaseWidth = window.frame.width
+        }
         guard let base = resizeBaseWidth else { return }
 
         let visible = screen.visibleFrame
@@ -203,24 +289,27 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
 
         var frame = window.frame
         frame.size.width = proposed
-        updateWindowFrame(to: frameForResize(baseOrigin: frame.origin, size: frame.size, visible: visible), alpha: window.alphaValue, animated: false)
+        frame = frameForResize(origin: frame.origin, size: frame.size, visible: visible)
+        window.setFrame(frame, display: true)
+        manualOrigin = frame.origin
+        manualWidth = frame.width
+        responseController.updateAnchor(relativeTo: frame)
 
         if finished {
-            manualWidth = proposed
             resizeBaseWidth = nil
         }
     }
 
-    private func frameForResize(baseOrigin: CGPoint, size: CGSize, visible: NSRect) -> NSRect {
+    private func frameForResize(origin: CGPoint, size: CGSize, visible: NSRect) -> NSRect {
         let margin: CGFloat = 12
-        var origin = baseOrigin
-        if origin.x + size.width > visible.maxX - margin {
-            origin.x = visible.maxX - size.width - margin
+        var newOrigin = origin
+        if newOrigin.x + size.width > visible.maxX - margin {
+            newOrigin.x = visible.maxX - size.width - margin
         }
-        if origin.x < visible.minX + margin {
-            origin.x = visible.minX + margin
+        if newOrigin.x < visible.minX + margin {
+            newOrigin.x = visible.minX + margin
         }
-        return NSRect(origin: origin, size: size)
+        return NSRect(origin: newOrigin, size: size)
     }
 
     private func showResponsePanel(with text: String) {
@@ -260,16 +349,14 @@ final class EdgePeeker {
     }
 
     func stop() {
-        if let monitor = monitor {
+        if let monitor {
             NSEvent.removeMonitor(monitor)
         }
         monitor = nil
         onPeek = nil
     }
 
-    deinit {
-        stop()
-    }
+    deinit { stop() }
 }
 
 // MARK: - Response panel
@@ -316,7 +403,7 @@ private final class ResponsePanelController {
 
         var size = hosting.fittingSize
         size.width = min(max(size.width, 260), 460)
-        size.height = min(max(size.height, 180), 420)
+        size.height = min(max(size.height, 200), 420)
         panel.setContentSize(size)
         position(relativeTo: anchorFrame, size: size)
         panel.orderFrontRegardless()
