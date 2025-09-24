@@ -194,22 +194,32 @@ def build_prompt(instruction, snapshot):
         }
         
         Available actions:
-        - answer: Provide a text response without UI interaction
-        - click: Click on an element (use target to identify element)
+        - answer: Provide a direct, helpful response without taking UI action
+        - click: Click on an element (use target text or identifier)
         - type: Type text into an element (use target and text)
-        - focus: Focus on an element (use target)
+        - focus: Move the focus/caret to an element (use target)
     """).strip()
     
-    return f"""You are Cluely-Lite, a local AI assistant for desktop automation.
+    guidance = textwrap.dedent("""
+        Guidelines:
+        - If the requested action seems unsafe or destructive, choose action "answer" and explain why confirmation is needed.
+        - When no on-screen context is available, reason based on the instruction alone and still choose an action.
+        - Avoid repeating generic introductions. Respond succinctly.
+        - For "answer", keep `target` null and provide the reply in `text`.
+    """).strip()
+    
+    return f"""You are Cluely-Lite, a focused local desktop agent.
 
 Instruction: {instruction}
 
-Current screen elements:
+Current screen elements (may be empty if snapshot unavailable):
 {snapshot_text}
 
 {schema}
 
-Analyze the instruction and current screen state, then return the appropriate action as JSON. Be precise with element targeting."""
+{guidance}
+
+Decide on the best action and return only the JSON object."""
 
 
 def query_ollama(prompt):

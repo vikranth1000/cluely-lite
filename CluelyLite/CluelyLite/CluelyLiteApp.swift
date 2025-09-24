@@ -33,7 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Reveal overlay when the mouse touches the top edge
         EdgePeeker.shared.start { [weak self] in
-            self?.overlayController.expandOverlay(requestingFocus: false)
+            guard let self = self else { return }
+            if self.overlayController.isInteractive == false {
+                self.overlayController.expandOverlay(requestingFocus: false)
+            }
         }
 
         // When hotkey fires, bring up Ask

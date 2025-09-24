@@ -15,15 +15,15 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
     private let overlayController = OverlayController()
     private let responseController = ResponsePanelController()
 
-    private let expandedHeight: CGFloat = 84
     private let collapsedHeight: CGFloat = 40
-    private let collapsedWidth: CGFloat = 320
-    private let minimumHorizontalPadding: CGFloat = 40
-    private let expandedPreferredWidth: CGFloat = 760
-    private let expandedHorizontalMargin: CGFloat = 160
+    private let expandedHeight: CGFloat = 88
+    private let minWidth: CGFloat = 280
+    private let maxWidthPadding: CGFloat = 48
 
+    private var manualOrigin: CGPoint?
+    private var manualWidth: CGFloat?
     private var isExpanded = false
-    private var positionRatio: CGFloat?
+    private var resizeBaseWidth: CGFloat?
 
     private override init() {
         super.init()
@@ -33,9 +33,9 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
     }
 
     private func configureWindow() {
-        guard let screen = NSScreen.main else { return }
+        let initialFrame = NSRect(x: 0, y: 0, width: 320, height: collapsedHeight)
         window = OverlayPanel(
-            contentRect: collapsedFrame(for: screen),
+            contentRect: initialFrame,
             styleMask: [.nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
@@ -64,36 +64,41 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
         overlayController.requestCollapse = { [weak self] in
             self?.collapseOverlay(animated: true)
         }
+
         overlayController.requestExpand = { [weak self] focus in
             self?.expandOverlay(requestingFocus: focus, animated: true)
         }
+
+        overlayController.adjustWidth = { [weak self] delta, finished in
+            self?.adjustWidth(delta: delta, finished: finished)
+        }
+
         overlayController.presentResponsePanel = { [weak self] text in
             self?.showResponsePanel(with: text)
         }
+
         overlayController.hideResponsePanel = { [weak self] in
             self?.hideResponsePanel()
         }
 
         responseController.onDismiss = { [weak self] in
             guard let self else { return }
-            if self.overlayController.responsePanelVisible {
-                self.overlayController.responsePanelVisible = false
-                self.remainFocusedIfNeeded()
+            overlayController.responsePanelVisible = false
+            if isExpanded {
+                focusOverlay()
             }
         }
     }
 
+    // MARK: - Expansion / Collapse
+
     func expandOverlay(requestingFocus: Bool, animated: Bool = true) {
         guard let screen = NSScreen.main else { return }
 
-        if !isExpanded {
-            isExpanded = true
-            overlayController.isExpanded = true
-        }
-
-        let targetFrame = expandedFrame(for: screen)
-        updateWindowFrame(to: targetFrame, alpha: 0.98, animated: animated)
-        window.orderFrontRegardless()
+        let targetFrame = frame(for: expandedHeight, screen: screen)
+        isExpanded = true
+        overlayController.isExpanded = true
+        updateWindowFrame(to: targetFrame, alpha: 0.97, animated: animated)
 
         if requestingFocus {
             focusOverlay()
@@ -111,9 +116,8 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
         window.makeFirstResponder(nil)
         hideResponsePanel()
 
-        let targetFrame = collapsedFrame(for: screen)
-        updateWindowFrame(to: targetFrame, alpha: 0.88, animated: animated)
-        window.orderFrontRegardless()
+        let targetFrame = frame(for: collapsedHeight, screen: screen)
+        updateWindowFrame(to: targetFrame, alpha: 0.9, animated: animated)
     }
 
     func toggleInteractiveMode() {
@@ -126,24 +130,22 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
 
     var isInteractive: Bool { isExpanded }
 
+    // MARK: - Window delegate
+
     func windowDidMove(_ notification: Notification) {
-        guard let screen = window.screen else { return }
-        let visible = screen.visibleFrame
-        positionRatio = (window.frame.midX - visible.minX) / visible.width
+        manualOrigin = window.frame.origin
+        manualWidth = window.frame.width
         responseController.updateAnchor(relativeTo: window.frame)
     }
+
+    // MARK: - Helpers
 
     private func focusOverlay() {
         NSApp.activate(ignoringOtherApps: true)
         window.makeKey()
-        DispatchQueue.main.async {
-            self.overlayController.focusAsk = true
+        DispatchQueue.main.async { [weak self] in
+            self?.overlayController.focusAsk = true
         }
-    }
-
-    private func remainFocusedIfNeeded() {
-        guard isExpanded else { return }
-        focusOverlay()
     }
 
     private func updateWindowFrame(to frame: NSRect, alpha: CGFloat, animated: Bool) {
@@ -158,40 +160,67 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
             window.setFrame(frame, display: true)
             window.alphaValue = alpha
         }
-        responseController.updateAnchor(relativeTo: frame)
+        manualOrigin = window.frame.origin
+        manualWidth = window.frame.width
+        responseController.updateAnchor(relativeTo: window.frame)
     }
 
-    private func collapsedFrame(for screen: NSScreen) -> NSRect {
+    private func frame(for height: CGFloat, screen: NSScreen) -> NSRect {
         let visible = screen.visibleFrame
-        let width = min(max(collapsedWidth, visible.width - minimumHorizontalPadding), visible.width - 24)
-        let x = resolvedXPosition(for: width, visible: visible)
-        let y = visible.maxY - collapsedHeight - 10
-        return NSRect(x: x, y: y, width: width, height: collapsedHeight)
+        let width = clampedWidth(for: visible)
+        let origin = resolvedOrigin(for: height, width: width, visible: visible)
+        return NSRect(x: origin.x, y: origin.y, width: width, height: height)
     }
 
-    private func expandedFrame(for screen: NSScreen) -> NSRect {
-        let visible = screen.visibleFrame
-        let maxWidth = visible.width - minimumHorizontalPadding
-        let preferred = min(expandedPreferredWidth, maxWidth)
-        let width = max(collapsedWidth, min(preferred, visible.width - expandedHorizontalMargin))
-        let x = resolvedXPosition(for: width, visible: visible)
-        let y = visible.maxY - expandedHeight - 14
-        return NSRect(x: x, y: y, width: width, height: expandedHeight)
-    }
-
-    private func resolvedXPosition(for width: CGFloat, visible: NSRect) -> CGFloat {
+    private func resolvedOrigin(for height: CGFloat, width: CGFloat, visible: NSRect) -> CGPoint {
         let margin: CGFloat = 12
-        let defaultX = visible.midX - width / 2
-        guard let ratio = positionRatio else {
-            return clamp(defaultX, lower: visible.minX + margin, upper: visible.maxX - width - margin)
-        }
-        let midX = visible.minX + ratio * visible.width
-        let proposed = midX - width / 2
-        return clamp(proposed, lower: visible.minX + margin, upper: visible.maxX - width - margin)
+        var origin = manualOrigin ?? CGPoint(
+            x: visible.midX - width / 2,
+            y: visible.maxY - height - 14
+        )
+
+        origin.x = min(max(origin.x, visible.minX + margin), visible.maxX - width - margin)
+        let maxY = visible.maxY - height - margin
+        let minY = visible.minY + margin
+        origin.y = min(max(origin.y, minY), maxY)
+        return origin
     }
 
-    private func clamp(_ value: CGFloat, lower: CGFloat, upper: CGFloat) -> CGFloat {
-        return min(max(value, lower), upper)
+    private func clampedWidth(for visible: NSRect) -> CGFloat {
+        let maxWidth = visible.width - maxWidthPadding
+        let desired = manualWidth ?? window?.frame.width ?? 320
+        return min(max(desired, minWidth), maxWidth)
+    }
+
+    private func adjustWidth(delta: CGFloat, finished: Bool) {
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        if resizeBaseWidth == nil { resizeBaseWidth = window.frame.width }
+        guard let base = resizeBaseWidth else { return }
+
+        let visible = screen.visibleFrame
+        let maxWidth = visible.width - maxWidthPadding
+        let proposed = min(max(base + delta, minWidth), maxWidth)
+
+        var frame = window.frame
+        frame.size.width = proposed
+        updateWindowFrame(to: frameForResize(baseOrigin: frame.origin, size: frame.size, visible: visible), alpha: window.alphaValue, animated: false)
+
+        if finished {
+            manualWidth = proposed
+            resizeBaseWidth = nil
+        }
+    }
+
+    private func frameForResize(baseOrigin: CGPoint, size: CGSize, visible: NSRect) -> NSRect {
+        let margin: CGFloat = 12
+        var origin = baseOrigin
+        if origin.x + size.width > visible.maxX - margin {
+            origin.x = visible.maxX - size.width - margin
+        }
+        if origin.x < visible.minX + margin {
+            origin.x = visible.minX + margin
+        }
+        return NSRect(origin: origin, size: size)
     }
 
     private func showResponsePanel(with text: String) {
@@ -210,9 +239,11 @@ final class OverlayWindowController: NSObject, NSWindowDelegate {
     }
 }
 
-// Reveal overlay when mouse touches the very top of the screen
+// MARK: - Edge monitor
+
 final class EdgePeeker {
     static let shared = EdgePeeker()
+
     private var monitor: Any?
     private var onPeek: (() -> Void)?
 
@@ -221,8 +252,8 @@ final class EdgePeeker {
         self.onPeek = onPeek
         monitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
             guard let screen = NSScreen.main else { return }
-            let loc = NSEvent.mouseLocation
-            if loc.y >= screen.frame.maxY - 2 {
+            let location = NSEvent.mouseLocation
+            if location.y >= screen.frame.maxY - 2 {
                 self?.onPeek?()
             }
         }
@@ -236,8 +267,12 @@ final class EdgePeeker {
         onPeek = nil
     }
 
-    deinit { stop() }
+    deinit {
+        stop()
+    }
 }
+
+// MARK: - Response panel
 
 private final class ResponsePanelController {
     private final class ResponsePanel: NSPanel {
@@ -278,9 +313,10 @@ private final class ResponsePanelController {
             onDismiss?()
         }
         hosting.layoutSubtreeIfNeeded()
+
         var size = hosting.fittingSize
         size.width = min(max(size.width, 260), 460)
-        size.height = min(max(size.height, 160), 360)
+        size.height = min(max(size.height, 180), 420)
         panel.setContentSize(size)
         position(relativeTo: anchorFrame, size: size)
         panel.orderFrontRegardless()
@@ -298,9 +334,11 @@ private final class ResponsePanelController {
     private func position(relativeTo anchor: NSRect, size: NSSize) {
         guard let screen = panel.screen ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
+        let margin: CGFloat = 16
+
         var x = anchor.midX - size.width / 2
         var y = anchor.minY - size.height - 12
-        let margin: CGFloat = 12
+
         if x < visible.minX + margin {
             x = visible.minX + margin
         }
@@ -310,6 +348,7 @@ private final class ResponsePanelController {
         if y < visible.minY + margin {
             y = anchor.minY - size.height - 12
         }
+
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
     }
 }
@@ -319,7 +358,7 @@ private struct ResponseView: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Assistant")
                     .font(.headline)
@@ -328,10 +367,10 @@ private struct ResponseView: View {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.85))
-                        .padding(6)
+                        .padding(5)
+                        .background(Color.black.opacity(0.2), in: Circle())
                 }
                 .buttonStyle(.plain)
-                .background(Color.black.opacity(0.25), in: Circle())
             }
 
             ScrollView {
@@ -343,22 +382,16 @@ private struct ResponseView: View {
                     .padding(.trailing, 4)
             }
         }
-        .frame(maxWidth: 440)
-        .padding(18)
+        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.25), radius: 18, y: 10)
         )
+        .frame(maxWidth: 480)
     }
 }
-//
-//  OverlayWindow.swift
-//  CluelyLite
-//
-//  Created by Vikranth Reddimasu on 9/23/25.
-//
