@@ -1,0 +1,13 @@
+{
+  "": {
+    "dependencies": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/AXHelper.d",
+    "object": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/AXHelper.o",
+    "swift-dependencies": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/master.swiftdeps"
+  },
+  "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/Sources/AXHelper/main.swift": {
+    "object": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/main.swift.o",
+    "swiftmodule": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/main.swiftdeps",
+    "diagnostics": "/Users/vikranthreddimasu/Desktop/cluely-lite/axhelper/.build/arm64-apple-macosx/release/AXHelper.build/main.dia"
+  }
+}

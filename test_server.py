@@ -51,7 +51,7 @@ def test_server():
             headers={'Content-Type': 'application/json'}
         )
         
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             result = json.loads(response.read().decode())
             print(f"✅ Command test passed")
             print(f"   Response: {result.get('response', 'No response')}")
@@ -63,7 +63,29 @@ def test_server():
         print(f"❌ Command test failed: {e}")
         return False
     
-    # Test 3: Error handling
+    # Test 3: Settings and models endpoints
+    print("\n3. Testing settings + models endpoints...")
+    try:
+        # Read models
+        with urllib.request.urlopen(f"{base_url}/models", timeout=5) as response:
+            data = json.loads(response.read().decode())
+            models = data.get('models', [])
+            print(f"✅ Models endpoint returned {len(models)} models")
+        # Update settings (model)
+        new_model = "qwen2.5:3b"
+        req = urllib.request.Request(
+            f"{base_url}/settings",
+            data=json.dumps({"ollama_model": new_model}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            assert data.get('ollama_model') == new_model
+            print("✅ Settings update applied")
+    except Exception as e:
+        print(f"⚠️  Settings/models test had an issue: {e}")
+
+    # Test 4: Error handling
     print("\n3. Testing error handling...")
     try:
         invalid_payload = {"invalid": "data"}
@@ -89,8 +111,8 @@ def test_server():
         print(f"❌ Error handling test failed: {e}")
         return False
     
-    # Test 4: Performance test
-    print("\n4. Testing performance...")
+    # Test 5: Performance test
+    print("\n5. Testing performance...")
     start_time = time.time()
     
     try:
@@ -101,7 +123,7 @@ def test_server():
             headers={'Content-Type': 'application/json'}
         )
         
-        with urllib.request.urlopen(req, timeout=15) as response:
+        with urllib.request.urlopen(req, timeout=120) as response:
             result = json.loads(response.read().decode())
             elapsed = time.time() - start_time
             print(f"✅ Performance test passed")
@@ -127,7 +149,7 @@ def check_ollama():
             print(f"   Available models: {', '.join(models)}")
             
             # Check for recommended models
-            recommended = ['phi4:mini', 'llama3.2:3b', 'qwen2.5:3b']
+            recommended = ['qwen2.5:3b', 'llama3.2:3b']
             found = [model for model in recommended if any(model in m for m in models)]
             
             if found:

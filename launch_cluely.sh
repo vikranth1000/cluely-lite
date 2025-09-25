@@ -33,9 +33,22 @@ echo "======================="
 echo ""
 
 # Check if we're in the right directory
-if [ ! -f "python/src/server.py" ] || [ ! -d "CluelyLite" ]; then
+if [ ! -f "python/src/server.py" ]; then
     print_error "Please run this script from the cluely-lite root directory"
     exit 1
+fi
+
+# Ensure a small, efficient local model by default (override via env)
+export CLUELY_OLLAMA_MODEL=${CLUELY_OLLAMA_MODEL:-qwen2.5:3b}
+
+# Ensure Ollama is running first (to avoid fallback mode)
+if ! pgrep -x "ollama" > /dev/null; then
+    print_warning "Ollama is not running. Starting Ollama..."
+    ollama serve &
+    sleep 3
+    print_success "Ollama started"
+else
+    print_success "Ollama is already running"
 fi
 
 # Check if Python server is already running
@@ -44,6 +57,7 @@ if pgrep -f "python.*server.py" > /dev/null; then
 else
     print_status "Starting Python server..."
     cd python/src
+    # Pass through current env (including CLUELY_OLLAMA_MODEL)
     python server.py &
     SERVER_PID=$!
     cd ../..
@@ -60,62 +74,6 @@ else
     fi
 fi
 
-# Check if Ollama is running
-if ! pgrep -x "ollama" > /dev/null; then
-    print_warning "Ollama is not running. Starting Ollama..."
-    ollama serve &
-    sleep 3
-    print_success "Ollama started"
-else
-    print_success "Ollama is already running"
-fi
-
-# Build the app if needed
-if [ ! -f "CluelyLite/build/Release/CluelyLite.app/Contents/MacOS/CluelyLite" ]; then
-    print_status "Building macOS application..."
-    cd CluelyLite
-    xcodebuild -project CluelyLite.xcodeproj -scheme CluelyLite -configuration Release build
-    cd ..
-    print_success "macOS application built"
-fi
-
-# Launch the macOS app
-print_status "Launching Cluely-Lite app..."
-open CluelyLite/build/Release/CluelyLite.app
-
-print_success "Cluely-Lite is now running!"
-echo ""
-echo "📋 Usage Instructions:"
-echo "  • Press ⌘+Return to activate the overlay"
-echo "  • Move mouse to top edge of screen to peek"
-echo "  • Click the eye icon in menu bar"
-echo "  • Type commands like 'Click Save button'"
-echo ""
-echo "🔧 Troubleshooting:"
-echo "  • Grant accessibility permissions in System Preferences"
-echo "  • Check server status: curl http://127.0.0.1:8765/health"
-echo "  • View logs: tail -f python/src/server.log"
-echo ""
-print_warning "Don't forget to grant accessibility permissions!"
-echo ""
-
-# Keep the script running to show status
-echo "Press Ctrl+C to stop the server and exit"
-echo ""
-
-# Function to cleanup on exit
-cleanup() {
-    echo ""
-    print_status "Shutting down..."
-    if [ ! -z "$SERVER_PID" ]; then
-        kill $SERVER_PID 2>/dev/null || true
-    fi
-    print_success "Cluely-Lite stopped"
-    exit 0
-}
-
-# Set up signal handlers
-trap cleanup SIGINT SIGTERM
-
-# Wait for user to stop
-wait
+print_status "Forwarding to Electron UI launcher..."
+./launch_electron.sh
+exit $?

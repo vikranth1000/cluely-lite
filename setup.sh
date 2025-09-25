@@ -87,21 +87,19 @@ else
     print_success "Ollama service is already running"
 fi
 
-# Pull a suitable model
+# Pull a small, efficient default model (override with CLUELY_OLLAMA_MODEL)
 print_status "Setting up AI model..."
-MODEL="phi4:mini"
+MODEL="${CLUELY_OLLAMA_MODEL:-qwen2.5:3b}"
 
 if ollama list | grep -q "$MODEL"; then
     print_success "Model $MODEL is already available"
 else
     print_status "Downloading model $MODEL (this may take a few minutes)..."
     ollama pull "$MODEL"
-    
     if [ $? -eq 0 ]; then
         print_success "Model $MODEL downloaded successfully"
     else
-        print_error "Failed to download model. Please check your internet connection and try again."
-        exit 1
+        print_warning "Failed to download $MODEL automatically. You can try a small alternative: 'ollama pull llama3.2:3b'"
     fi
 fi
 

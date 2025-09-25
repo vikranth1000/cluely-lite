@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <title>Cluely-Lite</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="pill" class="pill" style="-webkit-app-region: drag;">
+      <div class="grip" title="Drag"></div>
+      <input id="input" type="text" placeholder="Ask anything..." />
+      <button id="send" title="Send">➤</button>
+      <div class="resize-right" style="-webkit-app-region: no-drag" title="Resize width"></div>
+    </div>
+    <div id="tools" class="tools" style="-webkit-app-region: no-drag">
+      <button id="btn-snap" title="Snapshot UI">Snapshot</button>
+      <input id="ax-target" type="text" placeholder="target label" />
+      <button id="btn-click">Click</button>
+      <button id="btn-focus">Focus</button>
+      <input id="ax-text" type="text" placeholder="text" />
+      <button id="btn-type">Type</button>
+    </div>
+    <div id="resize-bottom" class="resize-bottom" style="-webkit-app-region: no-drag" title="Resize height"></div>
+
+    <div id="transcript" class="transcript hidden">
+      <div class="header">
+        <span>Assistant</span>
+        <button id="close" title="Close">✕</button>
+      </div>
+      <pre id="out"></pre>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+  </html>

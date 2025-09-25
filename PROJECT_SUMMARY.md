@@ -33,8 +33,9 @@
 
 #### Python AI Server
 - `server.py` - Robust HTTP server with error handling
-- Ollama integration with fallback mechanisms
-- JSON parsing and validation
+- Ollama integration with fallback mechanisms and a tiny heuristic planner when offline
+- JSON-only prompting tuned for small local models
+- Runtime settings endpoints (`GET/POST /settings`) and `GET /models`
 - Threading support for concurrent requests
 - Health monitoring and status endpoints
 
@@ -60,7 +61,7 @@
 # 1. Install Ollama
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama serve
-ollama pull phi4:mini
+ollama pull qwen2.5:3b
 
 # 2. Run setup
 chmod +x setup.sh
@@ -72,6 +73,8 @@ chmod +x setup.sh
 # 4. Launch
 ./launch_cluely.sh
 ```
+
+The default `qwen2.5:3b` model is fast and light; opt for `llama3.2:3b` if you prefer Meta’s weights.
 
 ### Usage
 1. **Activate**: Press `⌘+Return` or hover at top edge
@@ -119,14 +122,15 @@ chmod +x setup.sh
 
 ### System Requirements
 - **macOS**: 14.0 or later
-- **RAM**: 4GB+ recommended (2GB minimum)
+- **RAM**: 16GB recommended for the default model (8GB minimum with smaller models)
 - **Storage**: 5GB for models and app
 - **CPU**: Any Intel or Apple Silicon Mac
 
-### Recommended Models
-- **`phi4:mini`**: Fastest, ~2GB RAM, good for basic tasks
-- **`llama3.2:3b`**: Balanced performance, ~3GB RAM
-- **`qwen2.5:3b`**: Excellent for complex tasks, ~3GB RAM
+### Recommended Models (Local-first)
+- **`qwen2.5:3b`**: Fast, low-RAM default with strong common-sense (~3GB)
+- **`llama3.2:3b`**: Solid general model, ~3GB RAM
+
+> Tip: The first response after starting a model can take a few seconds while it warms up in memory.
 
 ## 🧪 Testing
 

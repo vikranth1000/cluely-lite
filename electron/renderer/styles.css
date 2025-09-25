@@ -1,0 +1,16 @@
+:root{ --bg: rgba(30,30,30,0.85); --fg: #fff; --sub:#bbb; --acc:#5ac8fa }
+html, body{ margin:0; padding:0; background:transparent; font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Inter,system-ui; }
+.pill{ position:fixed; top:16px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:20px; backdrop-filter: blur(10px); background: var(--bg); color: var(--fg); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+.tools{ position:fixed; top:78px; left:50%; transform:translateX(-50%); display:flex; gap:8px; align-items:center; background: var(--bg); color: var(--fg); padding:8px 10px; border-radius:12px; box-shadow: 0 6px 14px rgba(0,0,0,0.25); }
+.tools input{ background: rgba(255,255,255,0.08); color:var(--fg); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:6px 8px; }
+.tools button{ background: rgba(255,255,255,0.15); color: var(--fg); border: none; padding:6px 10px; border-radius:8px; cursor:pointer; }
+.grip{ width:16px; height:18px; opacity:.6; background: repeating-linear-gradient( to bottom, #aaa, #aaa 2px, transparent 2px, transparent 4px ); border-radius:3px; }
+#input{ -webkit-app-region: no-drag; width:320px; padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color:var(--fg); outline:none; }
+#send{ -webkit-app-region: no-drag; width:32px; height:32px; border-radius:50%; border:none; background: var(--acc); color:#003; font-weight:bold; cursor:pointer; }
+.resize-right{ position:absolute; right:-4px; top:0; bottom:0; width:6px; cursor: ew-resize; }
+.resize-bottom{ position:fixed; top:102px; left:50%; transform:translateX(-50%); width:48px; height:8px; border-radius:4px; background: rgba(255,255,255,0.3); cursor: ns-resize; }
+.transcript{ position: fixed; top:130px; left:50%; transform:translateX(-50%); width:540px; max-height:420px; padding:14px; border-radius:16px; background: var(--bg); color: var(--fg); box-shadow: 0 12px 30px rgba(0,0,0,0.35); overflow:auto; }
+.transcript.hidden{ display:none }
+.header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.header button{ border:none; background: rgba(255,255,255,0.15); color: var(--fg); border-radius:10px; padding:6px 10px; cursor:pointer; }
+pre{ white-space: pre-wrap; margin:0; }

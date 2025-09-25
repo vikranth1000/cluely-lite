@@ -14,12 +14,13 @@ curl -fsSL https://ollama.ai/install.sh | sh
 # Start Ollama service
 ollama serve
 
-# In another terminal, pull a suitable model
-ollama pull phi4:mini
-# or for better performance (requires more RAM):
-ollama pull llama3.2:3b
+# Pull a small, efficient default model
 ollama pull qwen2.5:3b
+# Optional alternative
+ollama pull llama3.2:3b
 ```
+
+`qwen2.5:3b` runs well on most Macs and gives quick local answers. If you prefer Meta’s weights, `llama3.2:3b` is also a good option.
 
 ### 2. Grant Accessibility Permissions
 The app requires accessibility permissions to interact with other applications:
@@ -161,13 +162,14 @@ python server.py
 
 ### Performance Tips
 
-1. **Use smaller models** for faster response times:
-   - `phi4:mini` (fastest, ~2GB RAM)
-   - `qwen2.5:3b` (good balance, ~3GB RAM)
+1. **Pick a model that matches your hardware**:
+   - `qwen2.5:3b` (default, compact and fast, ~3GB RAM)
+   - `llama3.2:3b` (good balance, ~3GB RAM)
 
 2. **Close unnecessary applications** to free up memory
 
 3. **Use specific instructions** rather than vague ones
+4. The first response after starting a model may take a few seconds while it warms up.
 
 ## Configuration
 
@@ -177,7 +179,7 @@ Edit `python/src/server.py` to customize:
 
 - **Model selection**: Change `OLLAMA_MODEL`
 - **Server port**: Modify the port in `main()`
-- **Timeout settings**: Adjust `timeout=45` in `query_ollama()`
+- **Timeout settings**: Adjust `timeout=120` in `query_ollama()`
 - **Response limits**: Modify `max_tokens` in the Ollama payload
 
 ### App Configuration

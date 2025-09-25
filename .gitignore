@@ -1,23 +1,24 @@
-python/.venv/
-__pycache__/
-*.pyc
-
 # macOS
 .DS_Store
 
-# Xcode / Swift
-xcuserdata/
+# Xcode/Swift build output
 DerivedData/
-*.xcuserstate
-*.xcworkspace/xcuserdata/
-*.playground
-build/
-*.dSYM
+Build/
+CluelyLite/build/
+BuildOutput/
 
-# SwiftPM
-.swiftpm/
-.build/
+# Python
+__pycache__/
+*.pyc
+
+# Node/Electron
+electron/node_modules/
+electron/out/
+dist/
 
 # Logs
 *.log
-EOF
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

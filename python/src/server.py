@@ -15,13 +15,20 @@ from urllib.parse import urlparse
 from urllib import request, error as urllib_error
 import socket
 
-# Configuration
-OLLAMA_URL = os.environ.get("CLUELY_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
-OLLAMA_MODEL = os.environ.get("CLUELY_OLLAMA_MODEL", "phi4:mini")
+# Configuration (defaults favor small, efficient local models)
+DEFAULT_OLLAMA_URL = os.environ.get("CLUELY_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+DEFAULT_OLLAMA_MODEL = os.environ.get("CLUELY_OLLAMA_MODEL", "qwen2.5:3b")
 ALLOWED_ACTIONS = {"answer", "click", "type", "focus"}
 
+# Mutable server state (runtime configurable via /settings)
+server_state = {
+    "ollama_url": DEFAULT_OLLAMA_URL,
+    "ollama_model": DEFAULT_OLLAMA_MODEL,
+}
+
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log_level = logging.DEBUG if os.environ.get("CLUELY_DEBUG") else logging.INFO
+logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Global state
@@ -33,12 +40,12 @@ class CommandHandler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def do_POST(self):
-        """Handle POST requests to /command endpoint."""
+        """Handle POST requests to /command endpoint or /settings."""
         global request_count
         request_count += 1
-        
+
         parsed_path = urlparse(self.path)
-        if parsed_path.path != '/command':
+        if parsed_path.path not in ('/command', '/settings'):
             self._send_error(404, "Not found")
             return
 
@@ -64,39 +71,54 @@ class CommandHandler(http.server.BaseHTTPRequestHandler):
             self._send_error(400, f"Invalid JSON payload: {exc}")
             return
 
+        if parsed_path.path == '/settings':
+            # Runtime settings update
+            updated = {}
+            if 'ollama_url' in json_payload:
+                url = str(json_payload['ollama_url']).strip()
+                if url:
+                    server_state['ollama_url'] = url
+                    updated['ollama_url'] = url
+            if 'ollama_model' in json_payload:
+                model = str(json_payload['ollama_model']).strip()
+                if model:
+                    server_state['ollama_model'] = model
+                    updated['ollama_model'] = model
+            if not updated:
+                self._send_error(400, "No recognized settings in payload")
+                return
+            logger.info(f"Settings updated: {updated}")
+            self._send_json(200, {"status": "ok", **server_state})
+            return
+
         instruction = json_payload.get('instruction')
         if not isinstance(instruction, str) or not instruction.strip():
             self._send_error(400, "Field 'instruction' must be a non-empty string")
             return
-        snapshot = json_payload.get('snapshot')
-        if snapshot is not None and not isinstance(snapshot, list):
-            self._send_error(400, "Field 'snapshot' must be an array if provided")
-            return
 
-        logger.info(f"Processing request #{request_count}: {instruction[:50]}...")
+        # Optional per-request model override
+        req_model = json_payload.get('model')
+        model_override = str(req_model).strip() if isinstance(req_model, str) and req_model.strip() else None
+
+        logger.info(f"Generating for request #{request_count}: {instruction[:50]}...")
         request_started = time.time()
-        
+
         try:
-            plan = plan_action(instruction.strip(), snapshot or [])
+            text, gen_err = generate_text(instruction.strip(), model_override=model_override)
             processing_time = time.time() - request_started
             logger.info(f"Request #{request_count} completed in {processing_time:.2f}s")
-            self._send_json(200, plan)
+            if gen_err:
+                self._send_json(502, {"response": f"Error: {gen_err}"})
+            else:
+                self._send_json(200, {"response": text})
         except Exception as e:
             logger.error(f"Error processing request #{request_count}: {e}")
-            error_response = {
-                "response": f"Error processing request: {str(e)}",
-                "tool": {
-                    "action": "answer",
-                    "target": None,
-                    "text": f"Error: {str(e)}"
-                }
-            }
-            self._send_json(500, error_response)
+            self._send_json(500, {"response": f"Error processing request: {str(e)}"})
     
     def do_GET(self):
-        """Handle GET requests - return server status."""
+        """Handle GET requests - return server status or settings/models."""
         parsed_path = urlparse(self.path)
-        if parsed_path.path not in ('/', '/status', '/health'):
+        if parsed_path.path not in ('/', '/status', '/health', '/settings', '/models'):
             self._send_error(404, "Not found")
             return
         
@@ -105,19 +127,24 @@ class CommandHandler(http.server.BaseHTTPRequestHandler):
             "status": "running",
             "uptime_seconds": round(uptime, 2),
             "requests_processed": request_count,
-            "ollama_url": OLLAMA_URL,
-            "ollama_model": OLLAMA_MODEL,
+            "ollama_url": server_state["ollama_url"],
+            "ollama_model": server_state["ollama_model"],
             "version": "1.0.0"
         }
         
         if parsed_path.path == '/health':
             self._send_json(200, status)
+        elif parsed_path.path == '/settings':
+            self._send_json(200, server_state | {"status": "ok"})
+        elif parsed_path.path == '/models':
+            models = list_ollama_models()
+            self._send_json(200, {"models": models})
         else:
             body = f"""Cluely-Lite Agent Server
 Status: Running
 Uptime: {uptime:.1f} seconds
 Requests: {request_count}
-Ollama: {OLLAMA_MODEL} at {OLLAMA_URL}
+Ollama: {server_state['ollama_model']} at {server_state['ollama_url']}
 
 Use POST /command with JSON {{"instruction":"<text>","snapshot":[...]}}
 """
@@ -148,18 +175,101 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     daemon_threads = True
 
 
-def plan_action(instruction, snapshot):
+def generate_text(prompt, model_override=None):
+    """Send the raw user prompt to the local model and return full text."""
+    model = model_override or server_state["ollama_model"]
+    url = server_state["ollama_url"]
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "max_tokens": 1024,
+            "num_ctx": 2048
+        }
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    try:
+        with request.urlopen(req, timeout=120) as resp:
+            body = resp.read()
+    except (urllib_error.URLError, urllib_error.HTTPError, TimeoutError, socket.timeout) as exc:
+        return None, f"Ollama connection error: {exc}"
+    try:
+        response_payload = json.loads(body.decode('utf-8'))
+    except json.JSONDecodeError as exc:
+        return None, f"Ollama response decode error: {exc}"
+    raw = response_payload.get('response')
+    if not isinstance(raw, str):
+        return None, "Ollama returned invalid response format"
+    return raw, None
+
+
+def plan_action(instruction, snapshot, model_override=None):
     """Plan an action based on instruction and screen snapshot."""
     prompt = build_prompt(instruction, snapshot)
-    tool, tool_error = query_ollama(prompt)
+    tool, tool_error = query_ollama(prompt, model_override=model_override)
     
     if tool is None:
         logger.warning(f"Ollama query failed: {tool_error}")
+        # Try a lightweight heuristic tool before echo fallback
+        heuristic = heuristic_tool(instruction, snapshot)
+        if heuristic is not None:
+            return {"response": heuristic.get("text") or "Action planned", "tool": heuristic}
         fallback = fallback_tool(instruction, tool_error)
         return fallback
 
-    response_text = tool.get("text") or "Action planned"
+    # Normalize tool target to prefer visible titles over opaque ids
+    tool = normalize_tool_with_snapshot(tool, snapshot, instruction)
+    # Provide a concise natural-language summary for UI transcript
+    action = tool.get("action") or ""
+    target = tool.get("target") or ""
+    if action == "answer":
+        response_text = tool.get("text") or "(no response)"
+    else:
+        response_text = f"Planned: {action} {target}".strip()
     return {"response": response_text, "tool": tool}
+
+
+def normalize_tool_with_snapshot(tool, snapshot, instruction):
+    """If the tool refers to an element by id or numeric string, map it to a visible title.
+    This helps the macOS action layer locate elements by their human-readable labels.
+    """
+    try:
+        action = (tool.get("action") or "").lower()
+        target = tool.get("target")
+        if action in {"click", "focus", "type"} and target:
+            # If target matches a node id, substitute its title if present
+            for node in snapshot:
+                if str(node.get("id")) == str(target):
+                    title = str(node.get("title", "")).strip()
+                    if title:
+                        tool["target"] = title
+                    break
+            # If target not a visible title, try to infer best title from instruction words
+            visible_titles = [str(n.get("title", "")).strip() for n in snapshot if str(n.get("title", "")).strip()]
+            tgt = str(tool.get("target") or "").strip()
+            if tgt and tgt not in visible_titles:
+                # Simple heuristic: choose title with highest token overlap with instruction
+                low_ins = (instruction or "").lower()
+                tokens = {t for t in [
+                    *low_ins.replace("\n", " ").split()
+                ] if t.isalpha() and len(t) >= 3}
+                best = None
+                best_score = 0
+                for title in visible_titles:
+                    lt = title.lower()
+                    score = sum(1 for w in tokens if w in lt)
+                    if score > best_score:
+                        best_score = score
+                        best = title
+                if best and best_score > 0:
+                    tool["target"] = best
+    except Exception:
+        pass
+    return tool
 
 
 def fallback_tool(instruction, detail=None):
@@ -177,6 +287,53 @@ def fallback_tool(instruction, detail=None):
     }
 
 
+def heuristic_tool(instruction, snapshot):
+    """Very small rule-based planner for offline/basic commands.
+    Attempts to extract a sensible tool from the instruction alone.
+    """
+    ins = instruction.strip()
+    low = ins.lower()
+
+    def first_title_matching(term):
+        t = term.lower()
+        for node in snapshot:
+            title = str(node.get("title", "")).lower()
+            if t and title and (t in title or title in t):
+                return node.get("title")
+        return term
+
+    # Click patterns
+    if low.startswith(("click ", "press ")):
+        target = ins.split(" ", 1)[1].strip()
+        target = target.strip("\"'")
+        return {"action": "click", "target": first_title_matching(target), "text": ""}
+
+    # Focus patterns
+    if low.startswith("focus "):
+        target = ins.split(" ", 1)[1].strip()
+        target = target.strip("\"'")
+        return {"action": "focus", "target": first_title_matching(target), "text": ""}
+
+    # Type patterns
+    if low.startswith(("type ", "enter ", "input ")):
+        # Extract quoted text if present
+        import re
+        m = re.search(r'"([^"]+)"|\'([^\']+)\'', ins)
+        text_value = m.group(1) if m and m.group(1) else (m.group(2) if m else None)
+        # Try to infer target after into/in
+        target = None
+        m2 = re.search(r"(?:into|in)\s+(.+)$", low)
+        if m2:
+            target = ins[m2.start(1):].strip()
+        return {"action": "type", "target": first_title_matching(target or ""), "text": text_value or ins.split(" ", 1)[1].strip()}
+
+    # Simple Q&A
+    if any(q in low for q in ["what's on my screen", "what is on my screen", "help", "how do i"]):
+        return {"action": "answer", "target": None, "text": "I can click, type, focus, or answer based on the visible UI. Try: 'Click Save', 'Type \"Hello\" into Search', or 'Focus password'."}
+
+    return None
+
+
 def build_prompt(instruction, snapshot):
     """Build a prompt for the AI model."""
     # Truncate snapshot to avoid token limits
@@ -186,7 +343,7 @@ def build_prompt(instruction, snapshot):
         snapshot_text = snapshot_text[:60000] + "\n... (truncated)"
     
     schema = textwrap.dedent("""
-        Respond with a single JSON object matching this schema:
+        Respond with a single JSON object matching this schema, using DOUBLE QUOTES for all keys/values and NO extra text:
         {
             "action": "answer|click|type|focus",
             "target": "string (element identifier)",
@@ -202,10 +359,11 @@ def build_prompt(instruction, snapshot):
     
     guidance = textwrap.dedent("""
         Guidelines:
-        - If the requested action seems unsafe or destructive, choose action "answer" and explain why confirmation is needed.
-        - When no on-screen context is available, reason based on the instruction alone and still choose an action.
-        - Avoid repeating generic introductions. Respond succinctly.
-        - For "answer", keep `target` null and provide the reply in `text`.
+        - If the requested action seems unsafe or destructive, choose action "answer" and explain that confirmation is needed.
+        - Always use the element TITLE as the "target" (not internal ids). Prefer exact titles from the snapshot.
+        - When snapshot is empty, still select the best action based on the instruction.
+        - Output ONLY the JSON object. No code fences, prose, or markdown.
+        - For "answer", set "target" to null and put the reply in "text".
     """).strip()
     
     return f"""You are Cluely-Lite, a focused local desktop agent.
@@ -222,24 +380,28 @@ Current screen elements (may be empty if snapshot unavailable):
 Decide on the best action and return only the JSON object."""
 
 
-def query_ollama(prompt):
+def query_ollama(prompt, model_override=None):
     """Query the Ollama API for action planning."""
+    model = model_override or server_state["ollama_model"]
+    url = server_state["ollama_url"]
     payload = {
-        "model": OLLAMA_MODEL,
+        "model": model,
         "prompt": prompt,
         "stream": False,
         "options": {
-            "temperature": 0.1,  # Low temperature for consistent output
-            "top_p": 0.9,
-            "max_tokens": 1000
-        }
+            "temperature": 0.2,  # Low for consistency on small models
+            "top_p": 0.8,
+            "max_tokens": 400,
+            "num_ctx": 2048
+        },
+        "format": "json"
     }
     
     data = json.dumps(payload).encode('utf-8')
-    req = request.Request(OLLAMA_URL, data=data, headers={'Content-Type': 'application/json'})
+    req = request.Request(url, data=data, headers={'Content-Type': 'application/json'})
     
     try:
-        with request.urlopen(req, timeout=45) as resp:
+        with request.urlopen(req, timeout=120) as resp:
             body = resp.read()
     except (urllib_error.URLError, urllib_error.HTTPError, TimeoutError, socket.timeout) as exc:
         return None, f"Ollama connection error: {exc}"
@@ -324,11 +486,24 @@ def validate_tool(obj):
 def check_ollama_availability():
     """Check if Ollama is running and accessible."""
     try:
-        req = request.Request(OLLAMA_URL.replace('/api/generate', '/api/tags'))
+        req = request.Request(server_state["ollama_url"].replace('/api/generate', '/api/tags'))
         with request.urlopen(req, timeout=5) as resp:
             return resp.status == 200
     except:
         return False
+
+
+def list_ollama_models():
+    """Return a list of model names available in the local Ollama daemon."""
+    try:
+        req = request.Request(server_state["ollama_url"].replace('/api/generate', '/api/tags'))
+        with request.urlopen(req, timeout=5) as resp:
+            body = json.loads(resp.read().decode('utf-8'))
+            models = [m.get('name') for m in body.get('models', []) if m.get('name')]
+            return models
+    except Exception as e:
+        logger.debug(f"Failed to list models: {e}")
+        return []
 
 
 def main():
@@ -338,16 +513,16 @@ def main():
     
     # Check Ollama availability
     if check_ollama_availability():
-        logger.info(f"✅ Ollama is running at {OLLAMA_URL}")
+        logger.info(f"✅ Ollama is running at {server_state['ollama_url']}")
     else:
-        logger.warning(f"⚠️  Ollama not detected at {OLLAMA_URL}")
+        logger.warning(f"⚠️  Ollama not detected at {server_state['ollama_url']}")
         logger.warning("   Server will run in fallback mode")
     
     try:
         with ThreadedTCPServer((host, port), CommandHandler) as httpd:
             logger.info(f"🚀 Cluely-Lite Agent Server starting on {host}:{port}")
-            logger.info(f"📊 Model: {OLLAMA_MODEL}")
-            logger.info(f"🔗 Ollama: {OLLAMA_URL}")
+            logger.info(f"📊 Model: {server_state['ollama_model']}")
+            logger.info(f"🔗 Ollama: {server_state['ollama_url']}")
             logger.info("📝 Use POST /command with JSON {\"instruction\":\"<text>\"}")
             logger.info("🛑 Press Ctrl+C to stop")
             
