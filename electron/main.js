@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, nativeImage } from 'electron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { spawn } from 'child_process'
@@ -52,6 +52,15 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Set Dock icon in dev/runtime if available
+  try {
+    if (process.platform === 'darwin') {
+      const iconPath = path.join(__dirname, 'build', 'icon.png')
+      const icon = nativeImage.createFromPath(iconPath)
+      if (!icon.isEmpty()) app.dock.setIcon(icon)
+    }
+  } catch {}
+
   createWindow()
 
   // Global shortcut: Cmd+\ to toggle

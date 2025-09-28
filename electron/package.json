@@ -8,7 +8,8 @@
     "start": "electron .",
     "dev": "electron .",
     "dist": "electron-builder --mac",
-    "prepack": "cd ../axhelper && swift build -c release || true"
+    "prepack": "cd ../axhelper && swift build -c release || true; bash -lc 'test -f build/icon.icns || (cd scripts && bash gen-icon.sh)'",
+    "gen:icon": "cd scripts && bash gen-icon.sh"
   },
   "dependencies": {},
   "devDependencies": {
@@ -19,6 +20,7 @@
     "appId": "ai.cluely.lite",
     "productName": "Cluely-Lite",
     "mac": {
+      "icon": "build/icon.icns",
       "category": "public.app-category.utilities",
       "target": ["dmg", "zip"],
       "hardenedRuntime": true,
