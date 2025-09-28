@@ -1,251 +1,85 @@
-# Cluely-Lite Setup Guide
+# Cluely‑Lite Setup Guide (Electron + Local‑First)
 
-Cluely-Lite is a local AI-powered desktop assistant for macOS that can see and interact with your screen using accessibility APIs and local AI models.
+Cluely‑Lite is a local AI assistant for macOS. The UI is an Electron pill overlay; screen actions are performed by a tiny Swift CLI (`axhelper`). A Python server talks to your local Ollama model.
 
 ## Prerequisites
 
-### 1. Install Ollama
-First, install Ollama to run local AI models:
+- macOS 14+
+- Python 3.9+
+- Xcode Command Line Tools (for Swift build)
+- Node.js + npm (for Electron)
+- Ollama (local LLM runtime)
+
+## 1) Install and start Ollama
 
 ```bash
-# Install Ollama
 curl -fsSL https://ollama.ai/install.sh | sh
-
-# Start Ollama service
 ollama serve
-
-# Pull a small, efficient default model
-ollama pull qwen2.5:3b
-# Optional alternative
-ollama pull llama3.2:3b
+ollama pull qwen2.5:3b          # default
+# optional: ollama pull llama3.2:3b
 ```
 
-`qwen2.5:3b` runs well on most Macs and gives quick local answers. If you prefer Meta’s weights, `llama3.2:3b` is also a good option.
-
-### 2. Grant Accessibility Permissions
-The app requires accessibility permissions to interact with other applications:
-
-1. Go to **System Preferences** → **Security & Privacy** → **Privacy** → **Accessibility**
-2. Click the lock icon and enter your password
-3. Add Cluely-Lite to the list of allowed applications
-4. Make sure the checkbox is checked
-
-### 3. Grant Screen Recording Permissions (Optional)
-For better screen analysis:
-
-1. Go to **System Preferences** → **Security & Privacy** → **Privacy** → **Screen Recording**
-2. Add Cluely-Lite to the list of allowed applications
-
-## Installation
-
-### Option 1: Build from Source
-
-1. **Clone and build the project:**
-   ```bash
-   git clone <your-repo-url>
-   cd cluely-lite
-   ```
-
-2. **Build the macOS app:**
-   ```bash
-   cd CluelyLite
-   xcodebuild -project CluelyLite.xcodeproj -scheme CluelyLite -configuration Release build
-   ```
-
-3. **Start the Python server:**
-   ```bash
-   cd python/src
-   python server.py
-   ```
-
-4. **Run the macOS app:**
-   ```bash
-   open /path/to/build/CluelyLite.app
-   ```
-
-### Option 2: Use the Setup Script
-
-Run the automated setup script:
+## 2) Clone repo and build the Swift helper
 
 ```bash
-chmod +x setup.sh
-./setup.sh
+git clone <your-repo-url>
+cd cluely-lite
+cd axhelper && swift build -c release && cd ..
 ```
 
-## Usage
-
-### Basic Usage
-
-1. **Start the Python server** (if not already running):
-   ```bash
-   cd python/src
-   python server.py
-   ```
-
-2. **Launch the macOS app** - it will appear in your menu bar with an eye icon
-
-3. **Activate the overlay** using one of these methods:
-   - Press `⌘+Return` (Command+Return)
-   - Move your mouse to the very top edge of the screen
-   - Click the eye icon in the menu bar
-
-4. **Type your instruction** in the text field and press Enter
-
-### Example Commands
-
-- "Click the Save button"
-- "Type 'Hello World' in the search box"
-- "Focus on the username field"
-- "What's on my screen right now?"
-- If Cluely-Lite warns about a risky action, type `confirm` to continue or `cancel` to dismiss the action.
-- A compact overlay stays visible at the top—hover to expand it or use the hotkey for quick access.
-
-### Advanced Usage
-
-#### Environment Variables
-
-You can customize the AI model and server settings:
+## 3) Install Electron deps and run
 
 ```bash
-# Use a different Ollama model
-export CLUELY_OLLAMA_MODEL="llama3.2:3b"
+cd electron
+npm install
+npm start
+```
 
-# Use a different Ollama server
-export CLUELY_OLLAMA_URL="http://localhost:11434/api/generate"
+Or use the convenience script from repo root:
 
-# Start the server with custom settings
+```bash
+./launch_electron.sh
+```
+
+## 4) Start the Python server
+
+```bash
+cd python/src
+# optional: export CLUELY_OLLAMA_MODEL="llama3.2:3b"
 python server.py
 ```
 
-#### Available Actions
+## Permissions
 
-The AI can perform these actions:
-- **answer**: Provide a text response
-- **click**: Click on UI elements
-- **type**: Type text into input fields
-- **focus**: Focus on specific elements
+On first use of the tools bar (Snapshot/Click/Type/Focus), grant Accessibility permissions for the `axhelper` binary:
+- System Settings → Privacy & Security → Accessibility → add and enable `axhelper`.
 
-## Troubleshooting
-
-### Common Issues
-
-1. **"Accessibility permissions required"**
-   - Go to System Preferences → Security & Privacy → Privacy → Accessibility
-   - Add Cluely-Lite and ensure it's checked
-
-2. **"Ollama not detected"**
-   - Make sure Ollama is running: `ollama serve`
-   - Check if the model is installed: `ollama list`
-   - Verify the URL in the server logs
-
-3. **"Agent HTTP error"**
-   - Ensure the Python server is running on port 8765
-   - Check firewall settings
-   - Verify the server logs for errors
-
-4. **App doesn't respond to hotkeys**
-   - Grant accessibility permissions
-   - Try restarting the app
-   - Check if another app is using the same hotkey
-
-### Debug Mode
-
-Enable debug logging:
-
-```bash
-# For the Python server
-export CLUELY_DEBUG=1
-python server.py
-
-# For the macOS app, check Console.app for logs
-```
-
-### Performance Tips
-
-1. **Pick a model that matches your hardware**:
-   - `qwen2.5:3b` (default, compact and fast, ~3GB RAM)
-   - `llama3.2:3b` (good balance, ~3GB RAM)
-
-2. **Close unnecessary applications** to free up memory
-
-3. **Use specific instructions** rather than vague ones
-4. The first response after starting a model may take a few seconds while it warms up.
+Screen Recording permissions are optional and only needed for advanced workflows.
 
 ## Configuration
 
-### Server Configuration
+```bash
+export CLUELY_OLLAMA_MODEL="qwen2.5:3b"        # override default model
+export CLUELY_OLLAMA_URL="http://127.0.0.1:11434/api/generate"
+export CLUELY_DEBUG=1                          # verbose Python logs
+```
 
-Edit `python/src/server.py` to customize:
+## Troubleshooting
 
-- **Model selection**: Change `OLLAMA_MODEL`
-- **Server port**: Modify the port in `main()`
-- **Timeout settings**: Adjust `timeout=120` in `query_ollama()`
-- **Response limits**: Modify `max_tokens` in the Ollama payload
+- Check server health: `curl http://127.0.0.1:8765/health`
+- List models: `curl http://127.0.0.1:8765/models`
+- Ensure Ollama is running: `ollama serve`
+- Build helper if missing: `(cd axhelper && swift build -c release)`
 
-### App Configuration
-
-The macOS app settings are in the Swift files:
-
-- **Hotkey**: Modify `HotkeyManager.swift`
-- **UI appearance**: Edit `OverlayView.swift`
-- **Auto-hide timing**: Change the timer in `OverlayWindow.swift`
-
-## Security & Privacy
-
-- **100% Local**: All processing happens on your machine
-- **No Data Collection**: No information is sent to external servers
-- **Open Source**: Full source code is available for review
-- **Minimal Permissions**: Only requests necessary accessibility permissions
-
-## Development
-
-### Project Structure
+## Project Structure
 
 ```
 cluely-lite/
-├── CluelyLite/           # macOS Swift app
-│   ├── CluelyLiteApp.swift
-│   ├── OverlayView.swift
-│   ├── AgentClient.swift
-│   └── Accessibility*.swift
-├── python/src/           # Python AI server
-│   └── server.py
-└── SETUP.md             # This file
+├── electron/                 # Electron UI (pill + transcript + tools)
+├── axhelper/                 # Swift CLI for macOS AX actions
+├── python/src/server.py      # Local HTTP server (Ollama integration)
+├── launch_electron.sh        # Convenience launcher for UI + helper
+└── SETUP.md                  # This file
 ```
 
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-### Building for Distribution
-
-1. **Archive the app:**
-   ```bash
-   xcodebuild -project CluelyLite.xcodeproj -scheme CluelyLite -configuration Release archive
-   ```
-
-2. **Export for distribution:**
-   - Open Xcode
-   - Window → Organizer
-   - Select your archive
-   - Click "Distribute App"
-
-## License
-
-This project is open source. See the LICENSE file for details.
-
-## Support
-
-For issues and questions:
-1. Check this setup guide
-2. Review the troubleshooting section
-3. Check the GitHub issues
-4. Create a new issue with detailed information
-
----
-
-**Happy automating!** 🤖✨
+Happy automating! 🤖✨

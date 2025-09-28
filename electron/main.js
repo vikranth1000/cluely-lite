@@ -9,13 +9,26 @@ const __dirname = path.dirname(__filename)
 
 let win
 
+// Ensure single instance
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+}
+
+app.on('second-instance', () => {
+  if (!win) return
+  if (!win.isVisible()) win.show()
+  if (win.isMinimized()) win.restore()
+  win.focus()
+})
+
 function createWindow() {
   win = new BrowserWindow({
     width: 420,
     height: 120,
     frame: false,
     transparent: true,
-    resizable: false,
+    resizable: true,
     alwaysOnTop: true,
     titleBarStyle: 'hiddenInset',
     hasShadow: false,
@@ -28,6 +41,14 @@ function createWindow() {
 
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+
+  // Basic crash/unresponsive logging
+  win.webContents.on('render-process-gone', (_e, details) => {
+    console.error('Renderer process gone:', details)
+  })
+  win.on('unresponsive', () => {
+    console.error('Window became unresponsive')
+  })
 }
 
 app.whenReady().then(() => {
@@ -43,6 +64,13 @@ app.whenReady().then(() => {
       win.focus()
     }
   })
+
+  // Verify shortcut registration
+  try {
+    if (!globalShortcut.isRegistered('CommandOrControl+\\')) {
+      console.error('Failed to register global shortcut CommandOrControl+\\')
+    }
+  } catch {}
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -16,9 +16,20 @@ electron/node_modules/
 electron/out/
 dist/
 
+# Swift SPM build artifacts (do not commit)
+axhelper/.build/
+
+# Python virtualenv (do not commit)
+python/.venv/
+
+# Xcode user data and legacy app folder
+CluelyLite/
+*.xcuserdatad/
+*.xcworkspace/
+*.xcuserstate
+
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-

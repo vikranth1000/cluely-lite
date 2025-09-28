@@ -8,5 +8,4 @@ contextBridge.exposeInMainWorld('cluely', {
     type: (text, target) => ipcRenderer.invoke('ax:type', text, target),
     focus: (target) => ipcRenderer.invoke('ax:focus', target),
   },
-  resize: (w, h) => ipcRenderer.send('ui:resize', { w, h })
 })
