@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#12141A"/>
+      <stop offset="100%" stop-color="#1A1D24"/>
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6ED3FF"/>
+      <stop offset="100%" stop-color="#5AC8FA"/>
+    </linearGradient>
+    <mask id="openRight">
+      <rect x="0" y="0" width="1024" height="1024" fill="white"/>
+      <!-- Cut a vertical slice on the right to create the C opening -->
+      <rect x="640" y="160" width="340" height="704" fill="black"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+
+  <!-- C ring -->
+  <circle cx="512" cy="512" r="360" fill="none" stroke="url(#strokeGrad)" stroke-width="180" mask="url(#openRight)" stroke-linecap="round"/>
+
+  <!-- Subtle inner shadow to add depth -->
+  <circle cx="512" cy="512" r="360" fill="none" stroke="#000" stroke-opacity="0.15" stroke-width="180" mask="url(#openRight)" transform="translate(0,6)"/>
+
+</svg>
+

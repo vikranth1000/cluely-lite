@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "dev": "electron .",
+    "dev": "NODE_ENV=development electron .",
     "dist": "electron-builder --mac",
-    "prepack": "cd ../axhelper && swift build -c release || true"
+    "build:icon": "cd scripts && bash gen-icon.sh"
   },
   "dependencies": {},
   "devDependencies": {
@@ -19,8 +19,12 @@
     "appId": "ai.cluely.lite",
     "productName": "Cluely-Lite",
     "mac": {
+      "icon": "build/icon.icns",
       "category": "public.app-category.utilities",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "hardenedRuntime": true,
       "entitlements": "entitlements.mac.plist",
       "gatekeeperAssess": false
@@ -30,12 +34,6 @@
       "preload.js",
       "renderer/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "../axhelper/.build/release/axhelper",
-        "to": "axhelper",
-        "filter": ["**/*"]
-      }
-    ]
+    "extraResources": []
   }
 }

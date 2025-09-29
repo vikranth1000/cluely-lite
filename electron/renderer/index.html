@@ -1,36 +1,110 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
-    <title>Cluely-Lite</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';">
+  <title>Cluely-Lite</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Main Pill Interface -->
+  <div id="app" class="app">
+    <!-- Pill Container -->
     <div id="pill" class="pill" style="-webkit-app-region: drag;">
-      <div class="grip" title="Drag"></div>
-      <input id="input" type="text" placeholder="Ask anything..." />
-      <button id="send" title="Send">➤</button>
+      <div class="grip" title="Drag to move"></div>
+      <input 
+        id="input" 
+        type="text" 
+        placeholder="Ask anything..." 
+        autocomplete="off"
+        spellcheck="false"
+        style="-webkit-app-region: no-drag;"
+      />
+      <button 
+        id="send" 
+        title="Send (Enter)" 
+        style="-webkit-app-region: no-drag;"
+      >
+        <span id="send-icon">➤</span>
+        <span id="loading-spinner" class="hidden">⟳</span>
+      </button>
       <div class="resize-right" style="-webkit-app-region: no-drag" title="Resize width"></div>
     </div>
-    <div id="tools" class="tools" style="-webkit-app-region: no-drag">
-      <button id="btn-snap" title="Snapshot UI">Snapshot</button>
-      <input id="ax-target" type="text" placeholder="target label" />
-      <button id="btn-click">Click</button>
-      <button id="btn-focus">Focus</button>
-      <input id="ax-text" type="text" placeholder="text" />
-      <button id="btn-type">Type</button>
+
+    <!-- Tools Bar -->
+    <div id="tools" class="tools hidden" style="-webkit-app-region: no-drag">
+      <div class="tools-group">
+        <button id="btn-snap" title="Take UI Snapshot">
+          <span>📸</span>
+          <span>Snapshot</span>
+        </button>
+        <input 
+          id="ax-target" 
+          type="text" 
+          placeholder="Target element..." 
+          autocomplete="off"
+        />
+        <button id="btn-click" title="Click Element">
+          <span>👆</span>
+          <span>Click</span>
+        </button>
+        <button id="btn-focus" title="Focus Element">
+          <span>🎯</span>
+          <span>Focus</span>
+        </button>
+      </div>
+      <div class="tools-group">
+        <input 
+          id="ax-text" 
+          type="text" 
+          placeholder="Text to type..." 
+          autocomplete="off"
+        />
+        <button id="btn-type" title="Type Text">
+          <span>⌨️</span>
+          <span>Type</span>
+        </button>
+      </div>
     </div>
+
+    <!-- Resize Handle -->
     <div id="resize-bottom" class="resize-bottom" style="-webkit-app-region: no-drag" title="Resize height"></div>
 
+    <!-- Transcript Panel -->
     <div id="transcript" class="transcript hidden">
       <div class="header">
-        <span>Assistant</span>
-        <button id="close" title="Close">✕</button>
+        <div class="header-left">
+          <span class="title">Assistant Response</span>
+          <span id="model-info" class="model-info"></span>
+        </div>
+        <div class="header-right">
+          <span id="processing-time" class="processing-time"></span>
+          <button id="copy" title="Copy to clipboard">📋</button>
+          <button id="close" title="Close">✕</button>
+        </div>
       </div>
-      <pre id="out"></pre>
+      <div class="content">
+        <pre id="output"></pre>
+      </div>
     </div>
 
-    <script src="renderer.js"></script>
-  </body>
-  </html>
+    <!-- Status Bar -->
+    <div id="status" class="status hidden">
+      <span id="status-text">Ready</span>
+      <div class="status-indicators">
+        <span id="connection-status" class="status-indicator" title="Server Connection">🔴</span>
+        <span id="ax-status" class="status-indicator" title="AX Helper Status">❓</span>
+      </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="error-toast hidden">
+      <span id="error-message"></span>
+      <button id="error-close">✕</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
