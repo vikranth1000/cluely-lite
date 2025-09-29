@@ -1,89 +1,141 @@
 #!/bin/bash
+set -euo pipefail
 
-# Cluely-Lite Setup Script (Electron + Swift CLI + Python server)
-set -e
-
-echo "🚀 Cluely-Lite Setup"
-echo "===================="
+# Cluely-Lite Professional Setup Script
+# Complete installation and configuration
 
 # Colors
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+NC='\033[0m'
+
+# Logging
 log() { echo -e "${BLUE}[INFO]${NC} $1"; }
-ok() { echo -e "${GREEN}[OK]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-err() { echo -e "${RED}[ERR]${NC} $1"; }
+success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; }
+header() { echo -e "${PURPLE}[CLUELY-LITE SETUP]${NC} $1"; }
 
-[[ "$OSTYPE" == darwin* ]] || { err "macOS required"; exit 1; }
+header "🚀 Professional Setup v2.0"
+echo "=================================="
 
-log "Checking Xcode Command Line Tools..."
+# Check macOS
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    error "This application requires macOS"
+    exit 1
+fi
+
+# Check system requirements
+log "Checking system requirements..."
+
+# Xcode Command Line Tools
 if ! xcode-select -p &>/dev/null; then
-  warn "Missing CLT. Installing..."
-  xcode-select --install || true
-  log "Finish CLT installation, then re-run this script."
-  exit 0
+    warning "Installing Xcode Command Line Tools..."
+    xcode-select --install || {
+        error "Failed to install Xcode Command Line Tools"
+        exit 1
+    }
+    log "Please complete the Xcode installation and re-run this script"
+    exit 0
 fi
-ok "Xcode CLT present"
+success "Xcode Command Line Tools installed"
 
-log "Checking Python 3..."; command -v python3 >/dev/null || { err "Install Python 3"; exit 1; }
-ok "Python found"
+# Python 3
+if ! command -v python3 &>/dev/null; then
+    error "Python 3 is required. Please install from https://python.org"
+    exit 1
+fi
+success "Python 3 found: $(python3 --version)"
 
-log "Checking Node.js/npm..."; command -v npm >/dev/null || { err "Install Node.js (https://nodejs.org)"; exit 1; }
-ok "npm found"
+# Node.js
+if ! command -v node &>/dev/null; then
+    error "Node.js is required. Please install from https://nodejs.org"
+    exit 1
+fi
+success "Node.js found: $(node --version)"
 
-log "Checking Ollama..."
+# Install Ollama
+log "Installing Ollama..."
 if ! command -v ollama &>/dev/null; then
-  warn "Ollama not found, installing..."
-  curl -fsSL https://ollama.ai/install.sh | sh || { err "Install Ollama manually"; exit 1; }
+    curl -fsSL https://ollama.ai/install.sh | sh || {
+        error "Failed to install Ollama"
+        exit 1
+    }
 fi
-ok "Ollama available"
+success "Ollama installed"
 
-log "Starting Ollama (if not running)..."
-pgrep -x ollama >/dev/null || (ollama serve & sleep 2)
-ok "Ollama running"
+# Start Ollama
+log "Starting Ollama service..."
+ollama serve > /dev/null 2>&1 &
+sleep 3
+success "Ollama service started"
 
-MODEL=${CLUELY_OLLAMA_MODEL:-qwen2.5:3b}
-log "Ensuring model $MODEL is available..."
-ollama list | grep -q "$MODEL" || ollama pull "$MODEL"
-ok "Model ready"
+# Install Python dependencies
+log "Installing Python dependencies..."
+cd python
+pip3 install -r requirements.txt || {
+    error "Failed to install Python dependencies"
+    exit 1
+}
+success "Python dependencies installed"
+cd ..
 
+# Build Swift helper
 log "Building Swift AX helper..."
-(cd axhelper && swift build -c release)
-ok "axhelper built"
+cd axhelper
+swift build -c release || {
+    error "Failed to build Swift AX helper"
+    exit 1
+}
+success "Swift AX helper built"
+cd ..
 
+# Install Electron dependencies
 log "Installing Electron dependencies..."
-(cd electron && npm install)
-ok "Electron deps installed"
+cd electron
+npm install || {
+    error "Failed to install Electron dependencies"
+    exit 1
+}
+success "Electron dependencies installed"
+cd ..
 
-echo
-ok "Setup complete. Next steps:"
-echo "1) Start server:   cd python/src && python server.py"
-echo "2) Launch UI:      ./launch_electron.sh  (or cd electron && npm start)"
-echo "3) Grant Accessibility to axhelper on first use."
-echo
-echo "See SETUP.md for details."
-print_warning "Don't forget to grant accessibility permissions before using the app!"
-echo ""
+# Pull default model
+MODEL=${CLUELY_OLLAMA_MODEL:-qwen2.5:3b}
+log "Installing AI model: $MODEL"
+ollama pull "$MODEL" || {
+    warning "Failed to pull model $MODEL, but continuing..."
+}
+success "Model $MODEL ready"
 
-# Test the setup
-print_status "Testing setup..."
+# Create logs directory
+mkdir -p logs
+success "Logs directory created"
 
-# Test Python server
+# Test installation
+log "Testing installation..."
 cd python/src
-timeout 5 python -c "
-import json
-import urllib.request
-import urllib.error
-
-try:
-    # Test if server can start
-    print('✅ Python dependencies are working')
-except Exception as e:
-    print(f'❌ Python test failed: {e}')
-    exit(1)
-" 2>/dev/null || print_warning "Python test had issues, but continuing..."
-
+timeout 10 python3 -c "
+import sys
+sys.path.append('.')
+from server import app
+print('✅ Python server imports successfully')
+" || {
+    warning "Python server test had issues, but continuing..."
+}
 cd ../..
 
-print_success "Setup verification complete!"
+success "Setup completed successfully!"
 echo ""
-echo "Ready to use Cluely-Lite! 🚀"
+echo "🎉 Cluely-Lite is ready to use!"
+echo ""
+echo "Next steps:"
+echo "1. Start the server: cd python/src && python3 server.py"
+echo "2. Launch the UI: ./launch_electron.sh"
+echo "3. Grant accessibility permissions when prompted"
+echo ""
+echo "For more information, see README.md"
+

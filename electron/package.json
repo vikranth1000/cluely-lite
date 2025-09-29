@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "dev": "electron .",
+    "dev": "NODE_ENV=development electron .",
     "dist": "electron-builder --mac",
-    "prepack": "cd ../axhelper && swift build -c release || true; bash -lc 'test -f build/icon.icns || (cd scripts && bash gen-icon.sh)'",
-    "gen:icon": "cd scripts && bash gen-icon.sh"
+    "build:ax": "cd ../axhelper && swift build -c release",
+    "build:icon": "cd scripts && bash gen-icon.sh",
+    "prepack": "npm run build:ax && npm run build:icon",
+    "postinstall": "npm run build:ax || true"
   },
   "dependencies": {},
   "devDependencies": {
