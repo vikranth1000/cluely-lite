@@ -8,10 +8,7 @@
     "start": "electron .",
     "dev": "NODE_ENV=development electron .",
     "dist": "electron-builder --mac",
-    "build:ax": "cd ../axhelper && swift build -c release",
-    "build:icon": "cd scripts && bash gen-icon.sh",
-    "prepack": "npm run build:ax && npm run build:icon",
-    "postinstall": "npm run build:ax || true"
+    "build:icon": "cd scripts && bash gen-icon.sh"
   },
   "dependencies": {},
   "devDependencies": {
@@ -24,7 +21,10 @@
     "mac": {
       "icon": "build/icon.icns",
       "category": "public.app-category.utilities",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "hardenedRuntime": true,
       "entitlements": "entitlements.mac.plist",
       "gatekeeperAssess": false
@@ -34,12 +34,6 @@
       "preload.js",
       "renderer/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "../axhelper/.build/release/axhelper",
-        "to": "axhelper",
-        "filter": ["**/*"]
-      }
-    ]
+    "extraResources": []
   }
 }
