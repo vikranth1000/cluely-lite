@@ -43,21 +43,16 @@ cluely-lite/
 │   │   └── logger.py      # Logging setup
 │   └── requirements.txt   # Python dependencies
 ├── electron/              # Electron frontend
-│   ├── src/
-│   │   ├── app.js        # Main app class
-│   │   └── preload.js    # Preload script
+│   ├── main.js           # Main process
+│   ├── preload.js        # Preload script
 │   ├── renderer/
 │   │   ├── index.html    # UI template
 │   │   ├── app.js        # UI controller
 │   │   └── styles.css    # Styles
 │   └── package.json      # Electron config
-├── axhelper/             # Swift CLI
-│   ├── Sources/AXHelper/
-│   │   └── main.swift    # AX automation
-│   └── Package.swift     # Swift config
+├── axhelper/             # Swift CLI (optional)
 ├── tests/                # Test suite
-├── config.json          # Global configuration
-└── docs/                # Documentation
+└── config.json          # Global configuration
 ```
 
 ## 🔧 **Development Workflow**
@@ -87,10 +82,10 @@ npm run dev
 ```
 
 **Key Files:**
-- `src/app.js` - Main Electron app class
-- `src/preload.js` - Secure API bridge
+- `main.js` - Electron main process
+- `preload.js` - Secure API bridge
 - `renderer/app.js` - UI controller
-- `renderer/styles.css` - Professional styling
+- `renderer/styles.css` - Styles
 
 **Development Mode:**
 - DevTools enabled
@@ -309,4 +304,3 @@ cd electron && npm run dist
 ---
 
 **Happy coding! 🚀**
-

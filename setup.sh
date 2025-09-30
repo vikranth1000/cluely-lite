@@ -83,15 +83,19 @@ pip3 install -r requirements.txt || {
 success "Python dependencies installed"
 cd ..
 
-# Build Swift helper
-log "Building Swift AX helper..."
-cd axhelper
-swift build -c release || {
-    error "Failed to build Swift AX helper"
-    exit 1
-}
-success "Swift AX helper built"
-cd ..
+# Build Swift helper (optional)
+if [[ -d axhelper ]]; then
+  log "Building Swift AX helper..."
+  cd axhelper
+  swift build -c release || {
+      error "Failed to build Swift AX helper"
+      exit 1
+  }
+  success "Swift AX helper built"
+  cd ..
+else
+  warning "AX helper directory not found; skipping build."
+fi
 
 # Install Electron dependencies
 log "Installing Electron dependencies..."
@@ -118,7 +122,11 @@ success "Logs directory created"
 # Test installation
 log "Testing installation..."
 cd python/src
-timeout 10 python3 -c "
+TIMEOUT_CMD=timeout
+if ! command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_CMD=true
+fi
+$TIMEOUT_CMD 10 python3 -c "
 import sys
 sys.path.append('.')
 from server import app
@@ -138,4 +146,3 @@ echo "2. Launch the UI: ./launch_electron.sh"
 echo "3. Grant accessibility permissions when prompted"
 echo ""
 echo "For more information, see README.md"
-

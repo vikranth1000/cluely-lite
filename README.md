@@ -73,7 +73,8 @@ Cluely-Lite is a powerful, privacy-focused desktop automation assistant that run
    pip install -r requirements.txt
    ```
 
-4. **Build Swift helper:**
+4. (Optional) **Build Swift helper:**
+   If you have the `axhelper/` CLI in this repository:
    ```bash
    cd ../axhelper
    swift build -c release
@@ -171,18 +172,14 @@ cluely-lite/
 │   │   └── logger.py      # Logging setup
 │   └── requirements.txt   # Python dependencies
 ├── electron/              # Electron UI
-│   ├── src/
-│   │   ├── app.js        # Main app class
-│   │   └── preload.js    # Preload script
+│   ├── main.js           # Electron main process
+│   ├── preload.js        # Secure API bridge
 │   ├── renderer/
 │   │   ├── index.html    # UI template
 │   │   ├── app.js        # UI controller
-│   │   └── styles.css    # Professional styles
+│   │   └── styles.css    # Styles
 │   └── package.json      # Electron config
-├── axhelper/             # Swift CLI
-│   ├── Sources/AXHelper/
-│   │   └── main.swift    # AX automation
-│   └── Package.swift     # Swift config
+├── axhelper/             # Swift CLI (optional; may be absent)
 ├── config.json           # Global config
 └── launch_electron.sh    # Launch script
 ```

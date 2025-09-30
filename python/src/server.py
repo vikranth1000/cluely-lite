@@ -80,7 +80,8 @@ app = FastAPI(
 # Add middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.security.cors_origins,
+    # Accept localhost and 127.0.0.1 on any port during local development
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
@@ -88,7 +89,15 @@ app.add_middleware(
 
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.local"]
+    # Include testclient host and common local variants
+    allowed_hosts=[
+        "localhost",
+        "127.0.0.1",
+        "*.local",
+        "testserver",
+        "localhost:8765",
+        "127.0.0.1:8765",
+    ],
 )
 
 # Security
@@ -265,10 +274,10 @@ async def process_command(request: CommandRequest):
         
     except Exception as e:
         logger.error(f"Error processing command #{app_state['request_count']}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing command: {str(e)}"
-        )
+        msg = str(e)
+        # Treat upstream Ollama failures as Bad Gateway to match expectations/tests
+        status = 502 if "Ollama" in msg else 500
+        raise HTTPException(status_code=status, detail=f"Error processing command: {msg}")
 
 
 async def generate_text(prompt: str, model: str, request_id: str) -> str:

@@ -58,7 +58,8 @@ class Config(BaseModel):
     def load(cls, config_path: Optional[str] = None) -> "Config":
         """Load configuration from file or environment variables"""
         if config_path is None:
-            config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config.json")
+            # Resolve to repository root config.json from python/src/
+            config_path = str(Path(__file__).resolve().parents[2] / "config.json")
         
         config_data = {}
         

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+const { contextBridge, ipcRenderer } = require('electron')
 
 const utils = {
   formatTime(seconds) {
@@ -9,20 +9,11 @@ const utils = {
 
 contextBridge.exposeInMainWorld('cluely', {
   generate: (prompt) => ipcRenderer.invoke('llm:generate', prompt),
-  // Stubbed AX API to keep UI intact; no-ops in local-only stack
-  ax: {
-    async snapshot() {
-      return { success: false, error: 'AX helper not available in local-only stack' }
-    },
-    async click() {
-      return { success: false, error: 'AX helper not available in local-only stack' }
-    },
-    async type() {
-      return { success: false, error: 'AX helper not available in local-only stack' }
-    },
-    async focus() {
-      return { success: false, error: 'AX helper not available in local-only stack' }
-    },
-  },
+  probe: () => ipcRenderer.invoke('llm:probe'),
+  setPassive: (on) => ipcRenderer.invoke('ui:set-passive', on),
+  setIncognito: (on) => ipcRenderer.invoke('app:set-incognito', on),
+  toggleVisibility: () => ipcRenderer.invoke('app:toggle-visibility'),
   utils,
 })
+
+console.log('Preload script loaded - cluely bridge exposed')
