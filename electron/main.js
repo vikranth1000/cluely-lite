@@ -10,9 +10,9 @@ const __dirname = path.dirname(__filename)
 const WINDOW_CONFIG = {
   width: 560,
   height: 400,
-  minWidth: 420,
-  minHeight: 120,
-  maxWidth: 900,
+  minWidth: 560,
+  minHeight: 400,
+  maxWidth: 560,
   maxHeight: 800,
 }
 
@@ -54,9 +54,10 @@ function createMainWindow() {
     transparent: true,
     hasShadow: false,
     backgroundColor: '#00000000',
-    resizable: true,
+    resizable: false,
     focusable: true,
     roundedCorners: true,
+    acceptFirstMouse: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
