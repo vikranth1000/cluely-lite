@@ -8,11 +8,11 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const WINDOW_CONFIG = {
-  width: 600,
-  height: 450,
-  minWidth: 500,
-  minHeight: 180,
-  maxWidth: 900,
+  width: 560,
+  height: 400,
+  minWidth: 560,
+  minHeight: 150,
+  maxWidth: 560,
   maxHeight: 900,
 }
 
@@ -51,15 +51,14 @@ function createMainWindow() {
     maxWidth: WINDOW_CONFIG.maxWidth,
     maxHeight: WINDOW_CONFIG.maxHeight,
     frame: false,
-    transparent: false,
-    hasShadow: true,
-    backgroundColor: '#0B1429',
+    transparent: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
     resizable: true,
     focusable: true,
     roundedCorners: true,
     acceptFirstMouse: true,
-    titleBarStyle: 'hiddenInset',
-    vibrancy: 'under-window',
+    titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -29,8 +29,7 @@
 html, body {
   height: 100%;
   margin: 0;
-  padding: 0;
-  background: #0B1429;
+  background: transparent;
   font-family: "SF Pro Rounded", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -42,11 +41,11 @@ html, body {
   position: relative;
   width: 100%;
   height: 100%;
-  padding: 0;
-  margin: 0;
+  pointer-events: none;
 }
 
 .pill {
+  pointer-events: auto;
   position: fixed;
   top: 24px;
   left: 50%;
@@ -55,8 +54,7 @@ html, body {
   align-items: center;
   gap: 18px;
   padding: 0 18px;
-  width: calc(100% - 30px);
-  max-width: 850px;
+  min-width: var(--pill-width);
   height: var(--pill-height);
   border-radius: var(--pill-radius);
   background: var(--pill-bg);
@@ -365,6 +363,7 @@ html, body {
 
 /* Outputs container below pill */
 .outputs {
+  pointer-events: auto;
   position: fixed;
   top: 94px;
   left: 50%;
@@ -372,8 +371,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: calc(100% - 30px);
-  max-width: 850px;
+  width: 530px;
   max-height: calc(100vh - 110px);
   z-index: 1150;
 }
