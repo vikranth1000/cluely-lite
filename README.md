@@ -1,145 +1,149 @@
-# Cluely-Lite v2.0 🚀
+# Cluely-Lite
 
-**Professional Local AI Assistant for macOS**
+A privacy-focused local AI assistant for macOS that runs entirely on your machine.
 
-Cluely-Lite is a powerful, privacy-focused desktop automation assistant that runs entirely on your Mac. Built with modern architecture and professional-grade code quality, it provides seamless AI-powered automation without any cloud dependencies.
+## Overview
 
-## ✨ Features
+Cluely-Lite is a desktop application that provides AI-powered assistance through a clean, minimal floating interface. All processing happens locally using Ollama, ensuring complete privacy without any cloud dependencies.
 
-### 🤖 **AI-Powered Automation**
-- **100% Local**: All AI processing happens on your Mac using Ollama
-- **No Cloud Dependencies**: Complete privacy and offline operation
-- **Multiple Models**: Support for various local LLM models
-- **Real-time Processing**: Fast response times with professional error handling
+**Version:** 2.0.0  
+**Platform:** macOS 14.0+  
+**License:** MIT
 
-### 🖥️ **Modern Desktop Interface**
-- **Floating Pill UI**: Minimal, always-accessible interface
-- **Professional Design**: Modern, accessible, and responsive design
-- **Keyboard Shortcuts**: Cmd+\ to toggle, Enter to send, Escape to close
-- **Resizable Interface**: Drag to resize width and height
-- **Dark Theme**: Beautiful dark theme with proper contrast
+## Key Features
 
-### 🔧 **Desktop Automation**
-- **UI Snapshot**: Capture and analyze current screen elements
-- **Click Automation**: Click any UI element by description
-- **Text Input**: Type text into any field
-- **Focus Control**: Focus and interact with UI elements
-- **Accessibility Integration**: Full macOS Accessibility API support
+### Current Implementation
 
-### 🛡️ **Security & Privacy**
-- **Local-First**: No data leaves your machine
-- **Secure Architecture**: Proper input validation and error handling
-- **Rate Limiting**: Built-in protection against abuse
-- **CORS Protection**: Secure cross-origin request handling
+- **Local AI Processing**: Integrated with Ollama for completely private, offline AI interactions
+- **Floating Pill Interface**: Minimal, always-accessible UI that stays on top of other applications
+- **Keyboard-Driven Workflow**: Quick access via Cmd+\ shortcut, Enter to submit queries
+- **Multiple Model Support**: Compatible with various Ollama models (qwen2.5:3b, llama3.2:3b, etc.)
+- **Incognito Mode**: Hide application from dock while maintaining functionality
+- **Real-time Responses**: Direct integration with Ollama API with fallback to FastAPI server
+- **Cross-Workspace Access**: Interface available across all virtual desktops
 
-## 🏗️ **Architecture**
+### Technical Architecture
 
 ```
-┌─────────────────┐   ┌──────────────────┐   ┌──────────────┐   ┌──────────────┐
-│ Electron UI     │──►│ FastAPI Server   │──►│ Ollama LLM   │   │ Swift AX     │
-│ • Modern UI     │   │ • Professional   │   │ • Local AI   │   │ • macOS AX   │
-│ • State Mgmt    │   │ • Rate Limiting  │   │ • Multiple   │   │ • Automation │
-│ • Error Handling│   │ • Logging        │   │   Models     │   │ • CLI Tool   │
-└─────────────────┘   └──────────────────┘   └──────────────┘   └──────────────┘
+┌─────────────────────┐
+│   Electron UI       │  Modern desktop interface
+│   (Main + Renderer) │  Context-isolated preload bridge
+└──────────┬──────────┘
+           │
+           ├──────────► Ollama API (Primary)
+           │            Direct HTTP requests to local LLM
+           │
+           └──────────► FastAPI Server (Fallback)
+                        Python backend with rate limiting
+                        and structured logging
 ```
 
-## 🚀 **Quick Start**
+## Prerequisites
 
-### Prerequisites
-- **macOS 14.0+** (Sequoia or later)
-- **Python 3.9+** with pip
-- **Node.js 18+** with npm
-- **Xcode Command Line Tools** (for Swift compilation)
-- **Ollama** (local LLM runtime)
+- **macOS**: Version 14.0 (Sequoia) or later
+- **Python**: 3.9 or higher
+- **Node.js**: 18.0 or higher
+- **Ollama**: For local LLM inference
+- **Xcode Command Line Tools**: `xcode-select --install`
 
-### Installation
+## Installation
 
-1. **Install Ollama and a model:**
-   ```bash
-   curl -fsSL https://ollama.ai/install.sh | sh
-   ollama serve
-   ollama pull qwen2.5:3b
-   ```
+### 1. Install Ollama
 
-2. **Clone and setup:**
-   ```bash
-   git clone <your-repo-url>
-   cd cluely-lite
-   ```
-
-3. **Install Python dependencies:**
-   ```bash
-   cd python
-   pip install -r requirements.txt
-   ```
-
-4. (Optional) **Build Swift helper:**
-   If you have the `axhelper/` CLI in this repository:
-   ```bash
-   cd ../axhelper
-   swift build -c release
-   ```
-
-5. **Install Electron dependencies:**
-   ```bash
-   cd ../electron
-   npm install
-   ```
-
-### Running
-
-1. **Start the Python server:**
-   ```bash
-   cd python/src
-   python server.py
-   ```
-
-2. **Launch the Electron UI:**
-   ```bash
-   cd ../../electron
-   npm start
-   ```
-
-3. **Or use the convenience script:**
-   ```bash
-   ./launch_electron.sh
-   ```
-
-## 🎯 **Usage**
-
-### Basic Commands
-- **Toggle UI**: `Cmd + \`
-- **Send Message**: Type and press `Enter`
-- **Close Panel**: Press `Escape`
-- **Toggle Tools**: `Ctrl + Enter`
-
-### Automation Tools
-- **Snapshot**: Capture current UI elements
-- **Click**: Click any element by description
-- **Focus**: Focus on any element
-- **Type**: Type text into any field
-
-### Example Workflows
-```
-"Take a screenshot of this page"
-"Click the Save button"
-"Type 'Hello World' into the search box"
-"Focus on the email field and type my email"
-```
-
-## ⚙️ **Configuration**
-
-### Environment Variables
 ```bash
-export CLUELY_OLLAMA_MODEL="qwen2.5:3b"        # AI model
-export CLUELY_OLLAMA_URL="http://127.0.0.1:11434/api/generate"
-export CLUELY_HOST="127.0.0.1"                 # Server host
-export CLUELY_PORT="8765"                      # Server port
-export CLUELY_LOG_LEVEL="INFO"                 # Logging level
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Start Ollama service
+ollama serve
+
+# Pull a model (recommended: qwen2.5:3b for balance of speed and quality)
+ollama pull qwen2.5:3b
 ```
+
+### 2. Clone Repository
+
+```bash
+git clone https://github.com/vikranth1000/cluely-lite.git
+cd cluely-lite
+```
+
+### 3. Install Python Dependencies
+
+```bash
+cd python
+pip3 install -r requirements.txt
+cd ..
+```
+
+### 4. Install Electron Dependencies
+
+```bash
+cd electron
+npm install
+cd ..
+```
+
+## Running the Application
+
+### Quick Start
+
+Use the automated launch script:
+
+```bash
+./launch_electron.sh
+```
+
+This script handles:
+- System requirements validation
+- Ollama service initialization
+- Model availability verification
+- Python server startup
+- Electron UI launch
+
+### Manual Start
+
+**Terminal 1 - Start Python Server:**
+```bash
+cd python/src
+python3 server.py
+```
+
+**Terminal 2 - Launch Electron UI:**
+```bash
+cd electron
+npm start
+```
+
+## Usage
+
+### Keyboard Shortcuts
+
+| Action | Shortcut |
+|--------|----------|
+| Toggle UI visibility | `Cmd + \` |
+| Submit query | `Enter` |
+| Clear input | `Escape` |
+| Close output tab | Click `×` button |
+
+### Basic Workflow
+
+1. Press `Cmd + \` to show the interface
+2. Type your question or command in the input field
+3. Press `Enter` to submit
+4. View AI response in the output panel below
+5. Close individual responses with the `×` button
+
+### Incognito Mode
+
+Click the eye icon to toggle incognito mode, which hides the application from the macOS dock while keeping it functional.
+
+## Configuration
 
 ### Configuration File
-Edit `config.json` for advanced settings:
+
+Edit `config.json` to customize behavior:
+
 ```json
 {
   "server": {
@@ -151,144 +155,201 @@ Edit `config.json` for advanced settings:
     "model": "qwen2.5:3b",
     "temperature": 0.7,
     "max_tokens": 1024
-  },
-  "electron": {
-    "width": 420,
-    "height": 120
   }
 }
 ```
 
-## 🔧 **Development**
+### Environment Variables
+
+```bash
+export CLUELY_OLLAMA_MODEL="qwen2.5:3b"
+export CLUELY_OLLAMA_URL="http://127.0.0.1:11434/api/generate"
+export CLUELY_PORT="8765"
+export CLUELY_LOG_LEVEL="INFO"
+```
+
+## Development
 
 ### Project Structure
+
 ```
 cluely-lite/
-├── python/                 # FastAPI server
-│   ├── src/
-│   │   ├── server.py      # Main server
-│   │   ├── config.py      # Configuration
-│   │   ├── models.py      # Pydantic models
-│   │   └── logger.py      # Logging setup
-│   └── requirements.txt   # Python dependencies
-├── electron/              # Electron UI
-│   ├── main.js           # Electron main process
-│   ├── preload.js        # Secure API bridge
+├── electron/
+│   ├── main.js              # Electron main process
+│   ├── preload.js           # IPC bridge (CommonJS)
 │   ├── renderer/
-│   │   ├── index.html    # UI template
-│   │   ├── app.js        # UI controller
-│   │   └── styles.css    # Styles
-│   └── package.json      # Electron config
-├── axhelper/             # Swift CLI (optional; may be absent)
-├── config.json           # Global config
-└── launch_electron.sh    # Launch script
+│   │   ├── index.html       # UI structure
+│   │   ├── app.js           # UI logic and state
+│   │   └── styles.css       # Interface styling
+│   └── package.json
+├── python/
+│   ├── src/
+│   │   ├── server.py        # FastAPI application
+│   │   ├── config.py        # Configuration loader
+│   │   ├── models.py        # Pydantic models
+│   │   └── logger.py        # Structured logging
+│   └── requirements.txt
+├── config.json              # Application configuration
+└── launch_electron.sh       # Automated startup script
 ```
 
-### Development Commands
+### API Endpoints
+
+**FastAPI Server (http://localhost:8765):**
+
+- `GET /health` - Server health and status
+- `GET /settings` - Current configuration
+- `POST /settings` - Update configuration
+- `GET /models` - List available Ollama models
+- `POST /command` - Process AI command
+
+### Development Mode
+
 ```bash
-# Python server
-cd python/src
-python server.py
-
-# Electron UI (development)
+# Run Electron with DevTools
 cd electron
-npm run dev
+NODE_ENV=development npm start
 
-# Build Swift helper
-cd axhelper
-swift build -c release
+# Python server with debug logging
+cd python/src
+CLUELY_LOG_LEVEL=DEBUG python3 server.py
+```
 
-# Build distribution
+### Building Distribution
+
+```bash
 cd electron
 npm run dist
 ```
 
-### API Endpoints
-- `GET /health` - Health check
-- `GET /settings` - Get current settings
-- `POST /settings` - Update settings
-- `GET /models` - List available models
-- `POST /command` - Process AI command
+Outputs to `electron/dist/` as `.dmg` and `.zip` packages.
 
-## 🛠️ **Troubleshooting**
+## Troubleshooting
 
 ### Common Issues
 
-**Server won't start:**
-```bash
-# Check if port is in use
-lsof -iTCP:8765 -sTCP:LISTEN
+**Bridge Communication Error:**
+- Ensure `preload.js` uses CommonJS syntax (require, not import)
+- Check browser console for detailed error messages
 
-# Check Python dependencies
-pip install -r python/requirements.txt
-```
-
-**Ollama connection failed:**
+**Ollama Not Responding:**
 ```bash
-# Check if Ollama is running
+# Verify Ollama is running
+curl http://127.0.0.1:11434/api/tags
+
+# Restart Ollama
+killall ollama
 ollama serve
-
-# Check available models
-ollama list
 ```
 
-**AX helper not working:**
+**Port Already in Use:**
 ```bash
-# Rebuild the helper
-cd axhelper && swift build -c release
+# Find process using port 8765
+lsof -i :8765
 
-# Grant accessibility permissions
-# System Settings → Privacy & Security → Accessibility
+# Kill the process or change port in config.json
 ```
 
-**Electron won't start:**
-```bash
-# Clear node_modules and reinstall
-cd electron
-rm -rf node_modules package-lock.json
-npm install
-```
+**Output Tabs Not Visible:**
+- Window height has been increased to 400px (from 120px)
+- Scroll down if multiple responses are present
 
-### Logs
-- **Server logs**: `logs/cluely-lite.log`
-- **Electron logs**: Check console output
-- **Debug mode**: Set `CLUELY_LOG_LEVEL=DEBUG`
+### Log Files
 
-## 📋 **Requirements**
+- Python server: `logs/cluely-lite.log`
+- Electron: Check terminal output or DevTools console
 
-### System Requirements
-- **macOS 14.0+** (Sequoia or later)
-- **8GB RAM** (recommended for AI models)
-- **2GB free disk space**
-- **Internet connection** (for initial setup only)
+## Roadmap
 
-### Dependencies
-- **Python 3.9+**
-- **Node.js 18+**
-- **Xcode Command Line Tools**
-- **Ollama** (local LLM runtime)
+### Planned Features
 
-## 🤝 **Contributing**
+**Near-term (v2.1):**
+- Voice input integration using native speech recognition
+- Conversation history and context management
+- Export conversations to Markdown/PDF
+- Custom system prompts per conversation
 
-We welcome contributions! Please see our contributing guidelines:
+**Mid-term (v2.2):**
+- Model switching from UI
+- Streaming responses for real-time feedback
+- Multi-turn conversations with context
+- Clipboard integration for quick queries
+
+**Long-term (v3.0):**
+- macOS Accessibility API integration for UI automation
+- Plugin system for extensibility
+- Cloud sync option (optional, encrypted)
+- Multi-language support
+
+### Known Limitations
+
+- Currently no conversation persistence between sessions
+- Listen button UI present but voice input not yet implemented
+- No built-in model management (use Ollama CLI)
+- Window positioning may need adjustment on multi-monitor setups
+
+## Performance
+
+**Tested Configuration:**
+- **Hardware:** Apple M4, 16GB RAM
+- **Model:** qwen2.5:3b (1.9GB)
+- **Response Time:** ~2-3 seconds average
+- **Memory Usage:** ~2.5GB (including model in Metal memory)
+
+## Security
+
+- All data processing occurs locally
+- No external API calls except to local Ollama instance
+- Rate limiting prevents abuse (60 requests/minute default)
+- CORS restricted to localhost
+- Context isolation in Electron renderer process
+- Input validation via Pydantic models
+
+## Contributing
+
+Contributions are welcome. Please:
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/improvement`)
+3. Follow existing code style and conventions
+4. Add tests for new functionality
+5. Update documentation as needed
+6. Submit a pull request with clear description
 
-## 📄 **License**
+## Technical Details
 
-MIT License - see [LICENSE](LICENSE) file for details.
+### Dependencies
 
-## 🙏 **Acknowledgments**
+**Python:**
+- fastapi (0.104.1)
+- uvicorn (0.24.0)
+- httpx (0.25.2)
+- pydantic (2.5.0)
+- structlog (23.2.0)
 
-- **Ollama** for local LLM runtime
-- **FastAPI** for the Python web framework
-- **Electron** for the desktop app framework
-- **macOS Accessibility API** for automation capabilities
+**Node.js:**
+- electron (28.0.0)
+- node-fetch (3.3.2)
+
+### System Integration
+
+- Uses Electron's IPC (Inter-Process Communication) for secure main-renderer messaging
+- Context isolation enabled with explicit contextBridge API exposure
+- Sandboxed renderer process for security
+- Direct Ollama API access with FastAPI fallback architecture
+
+## License
+
+MIT License - See LICENSE file for details.
+
+## Acknowledgments
+
+- Ollama team for the excellent local LLM runtime
+- FastAPI for the modern Python web framework
+- Electron team for cross-platform desktop capabilities
 
 ---
 
-**Made with ❤️ for macOS users who value privacy and local-first software.**
+**Author:** Vikranth Reddimasu  
+**Repository:** https://github.com/vikranth1000/cluely-lite  
+**Issues:** https://github.com/vikranth1000/cluely-lite/issues
