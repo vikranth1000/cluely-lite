@@ -86,7 +86,7 @@ function createMainWindow() {
 
   setPassiveMode(false)
   applyIncognito(false)
-  mainWindow.showInactive()
+  mainWindow.show()
 }
 
 function setPassiveMode(on) {
@@ -206,7 +206,8 @@ app.whenReady().then(() => {
     if (mainWindow.isVisible()) {
       mainWindow.hide()
     } else {
-      mainWindow.showInactive()
+      mainWindow.show()
+      mainWindow.focus()
       applyOverlaySettings(mainWindow)
       setPassiveMode(false)
     }
@@ -249,7 +250,8 @@ ipcMain.handle('app:toggle-visibility', () => {
   if (mainWindow.isVisible()) {
     mainWindow.hide()
   } else {
-    mainWindow.showInactive()
+    mainWindow.show()
+    mainWindow.focus()
     applyOverlaySettings(mainWindow)
     setPassiveMode(false)
   }
