@@ -1,6 +1,6 @@
 {
   "name": "cluely-lite-electron",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Electron UI for Cluely-Lite (local-first)",
   "main": "main.js",
   "type": "module",
@@ -10,7 +10,9 @@
     "dist": "electron-builder --mac",
     "build:icon": "cd scripts && bash gen-icon.sh"
   },
-  "dependencies": {},
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
   "devDependencies": {
     "electron": "^28.0.0",
     "electron-builder": "^24.13.3"
@@ -25,9 +27,11 @@
         "dmg",
         "zip"
       ],
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "entitlements": "entitlements.mac.plist",
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "sign": false,
+      "identity": null
     },
     "files": [
       "main.js",

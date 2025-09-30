@@ -96,15 +96,19 @@ if ! ollama list | grep -q "$MODEL"; then
 fi
 success "Model '$MODEL' ready"
 
-# Build Swift AX helper
-log "Building Swift AX helper..."
-cd axhelper
-if ! swift build -c release; then
-    error "Failed to build Swift AX helper"
-    exit 1
+# Build Swift AX helper (optional)
+if [[ -d axhelper ]]; then
+  log "Building Swift AX helper..."
+  cd axhelper
+  if ! swift build -c release; then
+      warning "AX helper build failed; continuing without it."
+  else
+      success "AX helper built successfully"
+  fi
+  cd ..
+else
+  warning "AX helper directory not found; skipping build."
 fi
-success "AX helper built successfully"
-cd ..
 
 # Install Python dependencies
 log "Installing Python dependencies..."

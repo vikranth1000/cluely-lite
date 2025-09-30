@@ -2,7 +2,8 @@
 Pydantic models for Cluely-Lite API
 """
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
+from pydantic.config import ConfigDict
 import re
 
 
@@ -12,14 +13,14 @@ class CommandRequest(BaseModel):
     model: Optional[str] = Field(None, max_length=100, description="Optional model override")
     snapshot: Optional[List[Dict[str, Any]]] = Field(None, description="Optional UI snapshot data")
     
-    @validator('instruction')
-    def validate_instruction(cls, v):
+    @field_validator('instruction')
+    def validate_instruction(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError('Instruction cannot be empty')
         return v.strip()
     
-    @validator('model')
-    def validate_model(cls, v):
+    @field_validator('model')
+    def validate_model(cls, v: Optional[str]) -> Optional[str]:
         if v and not re.match(r'^[a-zA-Z0-9._:-]+$', v):
             raise ValueError('Invalid model name format')
         return v
@@ -62,14 +63,14 @@ class SettingsUpdateRequest(BaseModel):
     ollama_url: Optional[str] = Field(None, max_length=500, description="New Ollama URL")
     ollama_model: Optional[str] = Field(None, max_length=100, description="New Ollama model")
     
-    @validator('ollama_url')
-    def validate_ollama_url(cls, v):
+    @field_validator('ollama_url')
+    def validate_ollama_url(cls, v: Optional[str]) -> Optional[str]:
         if v and not re.match(r'^https?://', v):
             raise ValueError('Ollama URL must start with http:// or https://')
         return v
     
-    @validator('ollama_model')
-    def validate_ollama_model(cls, v):
+    @field_validator('ollama_model')
+    def validate_ollama_model(cls, v: Optional[str]) -> Optional[str]:
         if v and not re.match(r'^[a-zA-Z0-9._:-]+$', v):
             raise ValueError('Invalid model name format')
         return v
@@ -89,8 +90,8 @@ class SnapshotNode(BaseModel):
     enabled: bool = Field(..., description="Whether element is enabled")
     frame: Dict[str, float] = Field(..., description="Element frame coordinates")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "button_1",
                 "role": "AXButton",
@@ -99,3 +100,4 @@ class SnapshotNode(BaseModel):
                 "frame": {"x": 100, "y": 100, "w": 80, "h": 30}
             }
         }
+    )
