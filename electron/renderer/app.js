@@ -147,21 +147,34 @@ class CluelyPill {
   showToast(message, variant = 'info', duration = 2800) {
     if (!message) return
     
-    // Remove any existing toasts to prevent stacking
-    const existingToasts = this.elements.toastContainer.querySelectorAll('.toast')
-    existingToasts.forEach(toast => {
-      toast.classList.remove('show')
-      setTimeout(() => toast.remove(), 100)
-    })
+    // Check if there's already an active toast
+    let toast = this.elements.toastContainer.querySelector('.toast')
     
-    const toast = document.createElement('div')
-    toast.className = `toast ${variant}`
-    toast.textContent = message
-    this.elements.toastContainer.appendChild(toast)
-    requestAnimationFrame(() => toast.classList.add('show'))
-    setTimeout(() => {
+    if (toast) {
+      // Update existing toast instantly - no animation needed
+      toast.className = `toast ${variant} show`
+      toast.textContent = message
+      
+      // Clear any existing timeout
+      if (toast.timeoutId) {
+        clearTimeout(toast.timeoutId)
+      }
+    } else {
+      // Create new toast
+      toast = document.createElement('div')
+      toast.className = `toast ${variant}`
+      toast.textContent = message
+      this.elements.toastContainer.appendChild(toast)
+      requestAnimationFrame(() => toast.classList.add('show'))
+    }
+    
+    // Set new auto-hide timeout
+    toast.timeoutId = setTimeout(() => {
       toast.classList.remove('show')
-      setTimeout(() => toast.remove(), 250)
+      setTimeout(() => {
+        toast.remove()
+        delete toast.timeoutId
+      }, 250)
     }, duration)
   }
 
