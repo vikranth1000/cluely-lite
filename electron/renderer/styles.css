@@ -243,35 +243,32 @@ html, body {
 .icon-eye {
   position: relative;
   width: 14px;
-  height: 10px;
-  border-radius: 999px;
+  height: 14px;
+  border-radius: 50%;
   border: 2px solid currentColor;
+  background: transparent;
+  transition: all 0.25s ease;
 }
 
 .icon-eye::after {
   content: "";
   position: absolute;
-  inset: 2px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
+  background: currentColor;
+  transition: all 0.25s ease;
+}
+
+.icon-btn.is-active .icon-eye {
   background: currentColor;
 }
 
-.icon-btn.is-incognito .icon-eye::after {
-  background: transparent;
-  border: 2px solid currentColor;
-}
-
-.icon-btn.is-incognito .icon-eye::before {
-  content: "";
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 2px;
-  background: linear-gradient(135deg, rgba(255, 96, 96, 0.7), rgba(255, 136, 136, 0.3));
-  transform: rotate(45deg);
-  opacity: 0.8;
+.icon-btn.is-active .icon-eye::after {
+  background: rgba(18, 24, 44, 0.95);
 }
 
 .icon-dots,

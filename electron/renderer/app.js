@@ -41,15 +41,16 @@ class CluelyPill {
     })
 
     this.elements.menuBtn.addEventListener('click', () => {
-      this.showToast('Quick actions coming soon', 'info')
+      this.showToast('Quick actions coming soon', 'info', 2000)
     })
 
     this.elements.incognitoBtn.addEventListener('click', async () => {
       this.state.incognito = !this.state.incognito
-      this.elements.incognitoBtn.classList.toggle('is-incognito', this.state.incognito)
+      this.elements.incognitoBtn.classList.toggle('is-active', this.state.incognito)
       this.elements.incognitoBtn.setAttribute('aria-pressed', String(this.state.incognito))
       await window.cluely.setIncognito(this.state.incognito)
-      this.showToast(this.state.incognito ? 'Incognito enabled' : 'Incognito disabled', 'info')
+      // Toast will auto-replace any existing toast
+      this.showToast(this.state.incognito ? 'Incognito enabled' : 'Incognito disabled', 'info', 2000)
     })
 
     document.addEventListener('keydown', (event) => {
@@ -145,6 +146,14 @@ class CluelyPill {
 
   showToast(message, variant = 'info', duration = 2800) {
     if (!message) return
+    
+    // Remove any existing toasts to prevent stacking
+    const existingToasts = this.elements.toastContainer.querySelectorAll('.toast')
+    existingToasts.forEach(toast => {
+      toast.classList.remove('show')
+      setTimeout(() => toast.remove(), 100)
+    })
+    
     const toast = document.createElement('div')
     toast.className = `toast ${variant}`
     toast.textContent = message
