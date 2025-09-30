@@ -4,6 +4,7 @@ class CluelyPill {
       isProcessing: false,
       incognito: false,
       isListening: false,
+      conversationStarted: false,
     }
 
     this.elements = this.cacheElements()
@@ -95,6 +96,10 @@ class CluelyPill {
     this.state.isProcessing = true
     this.showProcessing()
 
+    // Add user message to chat immediately
+    this.addUserMessage(prompt)
+    this.elements.prompt.value = ''
+
     try {
       // Call the bridge API directly
       const result = await window.cluely.generate(prompt)
@@ -110,12 +115,11 @@ class CluelyPill {
       }
       
       const text = typeof result.response === 'string' ? result.response.trim() : ''
-      this.addOutputTab(text || '(empty response)')
-      this.elements.prompt.value = ''
+      this.addAIMessage(text || '(empty response)')
     } catch (error) {
       console.error('Generation failed:', error)
       const errorMsg = error?.message || 'Generation failed'
-      this.addOutputTab(`Error: ${errorMsg}`)
+      this.addAIMessage(`Error: ${errorMsg}`)
       this.showToast(`Failed: ${errorMsg}`, 'error', 3000)
     } finally {
       this.state.isProcessing = false
@@ -152,30 +156,94 @@ class CluelyPill {
     }, duration)
   }
 
-  addOutputTab(content) {
-    this.ensureOutputsContainer()
-    const tab = document.createElement('div')
-    tab.className = 'output-tab'
-    const close = document.createElement('button')
-    close.className = 'close-btn'
-    close.setAttribute('aria-label', 'Close output')
-    close.textContent = '×'
-    close.addEventListener('click', () => {
-      tab.classList.remove('show')
-      setTimeout(() => tab.remove(), 250)
-    })
+  ensureConversationContainer() {
+    if (!this.state.conversationStarted) {
+      this.ensureOutputsContainer()
+      this.elements.outputs.innerHTML = '' // Clear any old tabs
+      
+      const conversationTab = document.createElement('div')
+      conversationTab.id = 'conversation-tab'
+      conversationTab.className = 'conversation-tab'
+      
+      const header = document.createElement('div')
+      header.className = 'conversation-header'
+      
+      const title = document.createElement('span')
+      title.textContent = 'Conversation'
+      
+      const clearBtn = document.createElement('button')
+      clearBtn.className = 'clear-conversation-btn'
+      clearBtn.textContent = 'Clear'
+      clearBtn.setAttribute('aria-label', 'Clear conversation')
+      clearBtn.addEventListener('click', () => this.clearConversation())
+      
+      header.appendChild(title)
+      header.appendChild(clearBtn)
+      
+      const messagesContainer = document.createElement('div')
+      messagesContainer.id = 'messages-container'
+      messagesContainer.className = 'messages-container'
+      
+      conversationTab.appendChild(header)
+      conversationTab.appendChild(messagesContainer)
+      this.elements.outputs.appendChild(conversationTab)
+      
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => conversationTab.classList.add('show'))
+      })
+      
+      this.state.conversationStarted = true
+    }
+  }
 
-    const pre = document.createElement('pre')
-    pre.textContent = content
-
-    tab.appendChild(close)
-    tab.appendChild(pre)
-    this.elements.outputs.appendChild(tab)
-
-    // Animate entry like toast
+  addUserMessage(text) {
+    this.ensureConversationContainer()
+    const messagesContainer = document.getElementById('messages-container')
+    
+    const messageDiv = document.createElement('div')
+    messageDiv.className = 'message user-message'
+    
+    const bubble = document.createElement('div')
+    bubble.className = 'message-bubble'
+    bubble.textContent = text
+    
+    messageDiv.appendChild(bubble)
+    messagesContainer.appendChild(messageDiv)
+    
+    // Animate and scroll
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => tab.classList.add('show'))
+      messageDiv.classList.add('show')
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
     })
+  }
+
+  addAIMessage(text) {
+    this.ensureConversationContainer()
+    const messagesContainer = document.getElementById('messages-container')
+    
+    const messageDiv = document.createElement('div')
+    messageDiv.className = 'message ai-message'
+    
+    const bubble = document.createElement('div')
+    bubble.className = 'message-bubble'
+    bubble.textContent = text
+    
+    messageDiv.appendChild(bubble)
+    messagesContainer.appendChild(messageDiv)
+    
+    // Animate and scroll
+    requestAnimationFrame(() => {
+      messageDiv.classList.add('show')
+      messagesContainer.scrollTop = messagesContainer.scrollHeight
+    })
+  }
+
+  clearConversation() {
+    const messagesContainer = document.getElementById('messages-container')
+    if (messagesContainer) {
+      messagesContainer.innerHTML = ''
+    }
+    this.showToast('Conversation cleared', 'info', 2000)
   }
 
   ensureOutputsContainer() {
