@@ -11,9 +11,9 @@ const WINDOW_CONFIG = {
   width: 560,
   height: 400,
   minWidth: 560,
-  minHeight: 400,
+  minHeight: 150,
   maxWidth: 560,
-  maxHeight: 800,
+  maxHeight: 900,
 }
 
 const OLLAMA_CONFIG = {
@@ -54,10 +54,11 @@ function createMainWindow() {
     transparent: true,
     hasShadow: false,
     backgroundColor: '#00000000',
-    resizable: false,
+    resizable: true,
     focusable: true,
     roundedCorners: true,
     acceptFirstMouse: true,
+    titleBarStyle: 'customButtonsOnHover',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
